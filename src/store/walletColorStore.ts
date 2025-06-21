@@ -17,13 +17,14 @@ interface WalletColorState {
   updateWalletColorRanges: (walletIds: string[], ranges: ColorRange[]) => void;
   getColorForBalance: (balance: number, walletId?: string) => string;
   getGlowSettings: (balance: number, walletId?: string) => { enabled: boolean; color: string };
+  getRangeInfo: (balance: number, walletId?: string) => ColorRange | null;
 }
 
 const defaultColorRanges: ColorRange[] = [
   { min: -Infinity, max: 0, color: '#EF4444', label: 'Saldo Negatif', icon: 'x', glowEnabled: true },
-  { min: 0, max: 100000, color: '#F59E0B', label: 'Saldo Rendah', icon: 'warning', glowEnabled: true },
-  { min: 100001, max: 1000000, color: '#10B981', label: 'Saldo Normal', icon: 'check', glowEnabled: false },
-  { min: 1000001, max: Infinity, color: '#3B82F6', label: 'Saldo Tinggi', icon: 'check', glowEnabled: true },
+  { min: 0, max: 50000, color: '#F59E0B', label: 'Saldo Rendah', icon: 'warning', glowEnabled: true },
+  { min: 50001, max: 500000, color: '#10B981', label: 'Saldo Normal', icon: 'check', glowEnabled: false },
+  { min: 500001, max: Infinity, color: '#3B82F6', label: 'Saldo Tinggi', icon: 'star', glowEnabled: true },
 ];
 
 export const useWalletColorStore = create<WalletColorState>()(
@@ -68,6 +69,15 @@ export const useWalletColorStore = create<WalletColorState>()(
           enabled: range?.glowEnabled || false,
           color: range?.color || '#6B7280'
         };
+      },
+
+      getRangeInfo: (balance, walletId) => {
+        const { colorRanges, walletSettings } = get();
+        
+        // Use wallet-specific settings if available, otherwise use global
+        const ranges = walletId && walletSettings[walletId] ? walletSettings[walletId] : colorRanges;
+        
+        return ranges.find(r => balance >= r.min && balance <= r.max) || null;
       },
     }),
     {

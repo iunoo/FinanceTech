@@ -33,9 +33,15 @@ const WalletSelector: React.FC<WalletSelectorProps> = ({
 
   const selectedWalletData = getWalletById(selectedWallet);
 
+  const handleWalletSelect = (walletId: string) => {
+    onWalletChange(walletId);
+    setIsOpen(false);
+  };
+
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between p-3 glass-input ${
           isDark ? 'text-white' : 'text-gray-800'
@@ -84,10 +90,8 @@ const WalletSelector: React.FC<WalletSelectorProps> = ({
             availableWallets.map((wallet) => (
               <button
                 key={wallet.id}
-                onClick={() => {
-                  onWalletChange(wallet.id);
-                  setIsOpen(false);
-                }}
+                type="button"
+                onClick={() => handleWalletSelect(wallet.id)}
                 className={`w-full flex items-center space-x-3 p-3 transition-colors text-left ${
                   wallet.id === selectedWallet 
                     ? (isDark ? 'bg-blue-600/30 border-l-4 border-blue-500' : 'bg-blue-50 border-l-4 border-blue-500')

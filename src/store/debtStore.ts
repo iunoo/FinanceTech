@@ -76,10 +76,21 @@ export const useDebtStore = create<DebtState>()(
         const debt = debts.find(d => d.id === id);
         
         if (debt) {
-          // Also delete related transactions
-          import('../store/transactionStore.js').then(({ useTransactionStore }) => {
+          // Delete all related transactions when debt is deleted
+          import('./transactionStore').then(({ useTransactionStore }) => {
             const transactionStore = useTransactionStore.getState();
-            transactionStore.deleteTransactionsByDebtId(id);
+            
+            // Delete original transaction if exists - pass true to prevent recursion
+            if (debt.originalTransactionId) {
+              transactionStore.deleteTransaction(debt.originalTransactionId, true);
+            }
+            
+            // Delete all payment transactions - pass true to prevent recursion
+            debt.paymentHistory.forEach(payment => {
+              if (payment.transactionId) {
+                transactionStore.deleteTransaction(payment.transactionId, true);
+              }
+            });
           });
         }
         
@@ -157,10 +168,34 @@ export const useDebtStore = create<DebtState>()(
           return { success: false, message: 'Tidak dapat membatalkan transaksi yang sudah ada pembayaran. Hapus riwayat pembayaran terlebih dahulu.' };
         }
 
-        // Delete related transactions
-        import('../store/transactionStore.js').then(({ useTransactionStore }) => {
+        // Delete related transactions - pass true to prevent recursion
+        import('./transactionStore').then(({ useTransactionStore }) => {
           const transactionStore = useTransactionStore.getState();
-          transactionStore.deleteTransactionsByDebtId(id);
+          
+          // Delete original transaction
+          if (debt.originalTransactionId) {
+            transactionStore.deleteTransaction(debt.originalTransactionId, true);
+          }
+        });
+
+        // Revert wallet balance manually since we're bypassing transaction deletion logic
+        import('./walletStore').then(({ useWalletStore }) => {
+          const walletStore = useWalletStore.getState();
+          const wallet = walletStore.getWalletById(debt.originalWalletId);
+          
+          if (wallet) {
+            if (debt.type === 'debt') {
+              // Debt creation is being canceled, so remove the money that was added
+              walletStore.updateWallet(debt.originalWalletId, {
+                balance: wallet.balance - debt.amount
+              });
+            } else {
+              // Credit creation is being canceled, so add back the money that was removed
+              walletStore.updateWallet(debt.originalWalletId, {
+                balance: wallet.balance + debt.amount
+              });
+            }
+          }
         });
 
         // Hapus debt dari store
@@ -188,13 +223,33 @@ export const useDebtStore = create<DebtState>()(
           return { success: false, message: 'Catatan pembayaran tidak ditemukan' };
         }
 
-        // Delete related transaction if exists
+        // Delete related transaction if exists - pass true to prevent recursion
         if (payment.transactionId) {
-          import('../store/transactionStore.js').then(({ useTransactionStore }) => {
+          import('./transactionStore').then(({ useTransactionStore }) => {
             const transactionStore = useTransactionStore.getState();
-            transactionStore.deleteTransaction(payment.transactionId!);
+            transactionStore.deleteTransaction(payment.transactionId, true);
           });
         }
+
+        // Revert wallet balance manually
+        import('./walletStore').then(({ useWalletStore }) => {
+          const walletStore = useWalletStore.getState();
+          const wallet = walletStore.getWalletById(payment.walletId);
+          
+          if (wallet) {
+            if (debt.type === 'debt') {
+              // Payment deletion: add money back (since payment reduced balance)
+              walletStore.updateWallet(payment.walletId, {
+                balance: wallet.balance + payment.amount
+              });
+            } else {
+              // Receipt deletion: remove money (since receipt added balance)
+              walletStore.updateWallet(payment.walletId, {
+                balance: wallet.balance - payment.amount
+              });
+            }
+          }
+        });
 
         // Update debt dengan menghapus payment record dan mengembalikan sisa amount
         const newRemainingAmount = debt.remainingAmount + payment.amount;

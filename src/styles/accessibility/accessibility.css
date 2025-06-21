@@ -1,0 +1,16 @@
+/* ===== PERFORMANCE ===== */
+.glass-card, .glass-button, .wallet-card { contain: layout style paint; }
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .glass-card, .glass-button { border-width: 2px; }
+  .wallet-card:hover { border-width: 3px; }
+}

@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useTransactionIdStore, transactionIdHelpers } from './transactionIdStore';
 
 export interface Transaction {
   id: string;
+  transactionId: string; // New: Human-readable transaction ID
   type: 'income' | 'expense';
   amount: number;
   category: string;
@@ -12,22 +14,31 @@ export interface Transaction {
   createdAt: string;
   isTransfer?: boolean; // Mark transfer transactions to exclude from analysis
   isDebtTransaction?: boolean; // Mark debt-related transactions
+  isBalanceAdjustment?: boolean; // Mark balance adjustment transactions to exclude from analysis
   linkedDebtId?: string; // Link to debt record
   debtTransactionType?: 'create' | 'payment' | 'cancel'; // Type of debt transaction
+  debtType?: 'debt' | 'credit'; // For debt transactions
 }
 
 interface TransactionState {
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => string;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'transactionId'>) => string;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
+  deleteTransaction: (id: string, isInternalCall?: boolean) => void;
   deleteTransactionsByDebtId: (debtId: string) => void;
   getTransactionsByDateRange: (startDate: string, endDate: string) => Transaction[];
-  getTransactionsByCategory: (walletId?: string, excludeTransfers?: boolean) => Record<string, number>;
-  getTotalIncome: (startDate?: string, endDate?: string, walletId?: string, excludeTransfers?: boolean) => number;
-  getTotalExpenses: (startDate?: string, endDate?: string, walletId?: string, excludeTransfers?: boolean) => number;
+  getTransactionsByCategory: (walletId?: string, excludeTransfers?: boolean, excludeAdjustments?: boolean) => Record<string, number>;
+  getTotalIncome: (startDate?: string, endDate?: string, walletId?: string, excludeTransfers?: boolean, excludeAdjustments?: boolean) => number;
+  getTotalExpenses: (startDate?: string, endDate?: string, walletId?: string, excludeTransfers?: boolean, excludeAdjustments?: boolean) => number;
   getTransactionsByWallet: (walletId: string) => Transaction[];
   getDebtTransactions: (debtId: string) => Transaction[];
+  getTransactionById: (id: string) => Transaction | undefined;
+  getTransactionByTransactionId: (transactionId: string) => Transaction | undefined;
+  getTransactionStats: () => {
+    totalTransactions: number;
+    byPrefix: Record<string, number>;
+    thisMonth: Record<string, number>;
+  };
 }
 
 export const useTransactionStore = create<TransactionState>()(
@@ -37,13 +48,28 @@ export const useTransactionStore = create<TransactionState>()(
       
       addTransaction: (transaction) => {
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        
+        // Generate transaction ID based on type
+        const prefix = transactionIdHelpers.getPrefix(
+          transaction.type,
+          transaction.isTransfer,
+          transaction.isDebtTransaction,
+          transaction.isBalanceAdjustment,
+          transaction.debtType
+        );
+        
+        const transactionId = useTransactionIdStore.getState().generateTransactionId(prefix);
+        
         const newTransaction: Transaction = {
           ...transaction,
           id,
+          transactionId,
         };
+        
         set((state) => ({
           transactions: [newTransaction, ...state.transactions],
         }));
+        
         return id;
       },
       
@@ -55,77 +81,34 @@ export const useTransactionStore = create<TransactionState>()(
         }));
       },
       
-      deleteTransaction: (id) => {
+      deleteTransaction: (id, isInternalCall = false) => {
         const { transactions } = get();
         const transaction = transactions.find(t => t.id === id);
         
-        // If this is a debt transaction, we need to handle the debt side
-        if (transaction?.isDebtTransaction && transaction.linkedDebtId) {
-          // Import debt store to handle the debt side
-          import('../store/debtStore.js').then(({ useDebtStore }) => {
-            const debtStore = useDebtStore.getState();
+        if (!transaction) {
+          return;
+        }
+        
+        // Only handle wallet balance reversion for regular transactions
+        // Debt transactions are handled by the debt store
+        // Balance adjustments should not revert wallet balance
+        if (!transaction.isDebtTransaction && !transaction.isBalanceAdjustment && !isInternalCall) {
+          // Regular transaction - revert wallet balance
+          // Import wallet store dynamically to avoid circular dependency
+          import('./walletStore').then(({ useWalletStore }) => {
+            const walletStore = useWalletStore.getState();
+            const wallet = walletStore.getWalletById(transaction.walletId);
             
-            if (transaction.debtTransactionType === 'create') {
-              // This is the original debt creation transaction
-              // We need to cancel the entire debt
-              const result = debtStore.cancelTransaction(transaction.linkedDebtId!);
-              if (result.success) {
-                // Also need to revert wallet balance
-                import('../store/walletStore.js').then(({ useWalletStore }) => {
-                  const walletStore = useWalletStore.getState();
-                  const wallet = walletStore.getWalletById(transaction.walletId);
-                  
-                  if (wallet && result.canceledDebt) {
-                    if (result.canceledDebt.type === 'debt') {
-                      // Debt creation is being deleted, so remove the money that was added
-                      walletStore.updateWallet(transaction.walletId, {
-                        balance: wallet.balance - transaction.amount
-                      });
-                    } else {
-                      // Credit creation is being deleted, so add back the money that was removed
-                      walletStore.updateWallet(transaction.walletId, {
-                        balance: wallet.balance + transaction.amount
-                      });
-                    }
-                  }
-                });
-              }
-            } else if (transaction.debtTransactionType === 'payment') {
-              // This is a payment transaction
-              // We need to reverse the payment in the debt record
-              const debt = debtStore.debts.find(d => d.id === transaction.linkedDebtId);
-              if (debt) {
-                // Find the payment record that matches this transaction
-                const paymentRecord = debt.paymentHistory.find(p => p.transactionId === transaction.id);
-                if (paymentRecord) {
-                  const result = debtStore.deletePaymentRecord(debt.id, paymentRecord.id);
-                  if (result.success) {
-                    // Revert wallet balance
-                    import('../store/walletStore.js').then(({ useWalletStore }) => {
-                      const walletStore = useWalletStore.getState();
-                      const wallet = walletStore.getWalletById(transaction.walletId);
-                      
-                      if (wallet) {
-                        if (debt.type === 'debt') {
-                          // Payment deletion: add money back (since payment reduced balance)
-                          walletStore.updateWallet(transaction.walletId, {
-                            balance: wallet.balance + transaction.amount
-                          });
-                        } else {
-                          // Receipt deletion: remove money (since receipt added balance)
-                          walletStore.updateWallet(transaction.walletId, {
-                            balance: wallet.balance - transaction.amount
-                          });
-                        }
-                      }
-                    });
-                  }
-                }
-              }
+            if (wallet) {
+              const balanceChange = transaction.type === 'income' ? -transaction.amount : transaction.amount;
+              walletStore.updateWallet(transaction.walletId, { 
+                balance: wallet.balance + balanceChange 
+              });
             }
           });
         }
         
+        // Remove transaction from store
         set((state) => ({
           transactions: state.transactions.filter((t) => t.id !== id),
         }));
@@ -145,7 +128,7 @@ export const useTransactionStore = create<TransactionState>()(
         });
       },
       
-      getTransactionsByCategory: (walletId, excludeTransfers = true) => {
+      getTransactionsByCategory: (walletId, excludeTransfers = true, excludeAdjustments = true) => {
         const { transactions } = get();
         let filteredTransactions = transactions;
         
@@ -156,6 +139,10 @@ export const useTransactionStore = create<TransactionState>()(
         if (excludeTransfers) {
           filteredTransactions = filteredTransactions.filter(t => !t.isTransfer);
         }
+
+        if (excludeAdjustments) {
+          filteredTransactions = filteredTransactions.filter(t => !t.isBalanceAdjustment);
+        }
         
         return filteredTransactions.reduce((acc, transaction) => {
           if (transaction.type === 'expense') {
@@ -165,7 +152,7 @@ export const useTransactionStore = create<TransactionState>()(
         }, {} as Record<string, number>);
       },
       
-      getTotalIncome: (startDate, endDate, walletId, excludeTransfers = true) => {
+      getTotalIncome: (startDate, endDate, walletId, excludeTransfers = true, excludeAdjustments = true) => {
         const { transactions, getTransactionsByDateRange } = get();
         let relevantTransactions = startDate && endDate 
           ? getTransactionsByDateRange(startDate, endDate)
@@ -177,6 +164,10 @@ export const useTransactionStore = create<TransactionState>()(
         
         if (excludeTransfers) {
           relevantTransactions = relevantTransactions.filter(t => !t.isTransfer);
+        }
+
+        if (excludeAdjustments) {
+          relevantTransactions = relevantTransactions.filter(t => !t.isBalanceAdjustment);
         }
         
         return relevantTransactions
@@ -184,7 +175,7 @@ export const useTransactionStore = create<TransactionState>()(
           .reduce((sum, t) => sum + t.amount, 0);
       },
       
-      getTotalExpenses: (startDate, endDate, walletId, excludeTransfers = true) => {
+      getTotalExpenses: (startDate, endDate, walletId, excludeTransfers = true, excludeAdjustments = true) => {
         const { transactions, getTransactionsByDateRange } = get();
         let relevantTransactions = startDate && endDate 
           ? getTransactionsByDateRange(startDate, endDate)
@@ -196,6 +187,10 @@ export const useTransactionStore = create<TransactionState>()(
         
         if (excludeTransfers) {
           relevantTransactions = relevantTransactions.filter(t => !t.isTransfer);
+        }
+
+        if (excludeAdjustments) {
+          relevantTransactions = relevantTransactions.filter(t => !t.isBalanceAdjustment);
         }
         
         return relevantTransactions
@@ -212,6 +207,44 @@ export const useTransactionStore = create<TransactionState>()(
         const { transactions } = get();
         return transactions.filter(t => t.linkedDebtId === debtId);
       },
+      
+      getTransactionById: (id) => {
+        const { transactions } = get();
+        return transactions.find(t => t.id === id);
+      },
+      
+      getTransactionByTransactionId: (transactionId) => {
+        const { transactions } = get();
+        return transactions.find(t => t.transactionId === transactionId);
+      },
+      
+      getTransactionStats: () => {
+        const { transactions } = get();
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        
+        // Count by prefix
+        const byPrefix: Record<string, number> = {};
+        const thisMonth: Record<string, number> = {};
+        
+        transactions.forEach(transaction => {
+          const parsed = transactionIdHelpers.parseTransactionId(transaction.transactionId);
+          if (parsed) {
+            byPrefix[parsed.prefix] = (byPrefix[parsed.prefix] || 0) + 1;
+            
+            if (parsed.year === currentYear && parsed.month === currentMonth) {
+              thisMonth[parsed.prefix] = (thisMonth[parsed.prefix] || 0) + 1;
+            }
+          }
+        });
+        
+        return {
+          totalTransactions: transactions.length,
+          byPrefix,
+          thisMonth
+        };
+      }
     }),
     {
       name: 'transaction-storage',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit, Trash2, CreditCard, AlertTriangle, History, X, Undo2 } from 'lucide-react';
+import { Edit, Trash2, CreditCard, AlertTriangle, History, X, Undo2, Eye } from 'lucide-react';
 import { useDebtStore } from '../../store/debtStore';
 import { useTransactionStore } from '../../store/transactionStore';
 import { useWalletStore } from '../../store/walletStore';
@@ -17,10 +17,11 @@ interface DebtTableProps {
 
 const DebtTable: React.FC<DebtTableProps> = ({ debts, onEdit, onDelete, onMakePayment }) => {
   const { cancelTransaction, deletePaymentRecord } = useDebtStore();
-  const { addTransaction } = useTransactionStore();
+  const { addTransaction, getDebtTransactions } = useTransactionStore();
   const { updateWallet, getWalletById } = useWalletStore();
   const { isDark } = useThemeStore();
   const [showPaymentHistory, setShowPaymentHistory] = useState<string | null>(null);
+  const [showTransactionHistory, setShowTransactionHistory] = useState<string | null>(null);
 
   const getDaysUntilDue = (dueDate: string) => {
     return differenceInDays(new Date(dueDate), new Date());
@@ -53,7 +54,7 @@ const DebtTable: React.FC<DebtTableProps> = ({ debts, onEdit, onDelete, onMakePa
   };
 
   const handleCancelTransaction = (debt: any) => {
-    if (window.confirm(`Apakah Anda yakin ingin MEMBATALKAN SELURUH transaksi "${debt.name}"?\n\nIni akan:\n- Menghapus catatan utang/piutang\n- Mengembalikan saldo ke kondisi sebelum transaksi\n\nJumlah: ${formatCurrency(debt.amount)}\nJenis: ${debt.type === 'debt' ? 'Utang' : 'Piutang'}`)) {
+    if (window.confirm(`Apakah Anda yakin ingin MEMBATALKAN SELURUH transaksi "${debt.name}"?\n\nIni akan:\n- Menghapus catatan utang/piutang\n- Mengembalikan saldo ke kondisi sebelum transaksi\n- Menghapus semua transaksi terkait dari riwayat\n\nJumlah: ${formatCurrency(debt.amount)}\nJenis: ${debt.type === 'debt' ? 'Utang' : 'Piutang'}`)) {
       
       const result = cancelTransaction(debt.id);
       
@@ -154,6 +155,10 @@ const DebtTable: React.FC<DebtTableProps> = ({ debts, onEdit, onDelete, onMakePa
     }
   };
 
+  const handleShowTransactionHistory = (debtId: string) => {
+    setShowTransactionHistory(showTransactionHistory === debtId ? null : debtId);
+  };
+
   if (debts.length === 0) {
     return (
       <div className="glass-card rounded-lg overflow-hidden">
@@ -251,6 +256,15 @@ const DebtTable: React.FC<DebtTableProps> = ({ debts, onEdit, onDelete, onMakePa
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end space-x-1">
+                      {/* Transaction History Button */}
+                      <button
+                        onClick={() => handleShowTransactionHistory(debt.id)}
+                        className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200 hover:bg-purple-500/20"
+                        title="Lihat Riwayat Transaksi"
+                      >
+                        <Eye className="w-4 h-4 text-purple-500" />
+                      </button>
+
                       {/* Payment History Button */}
                       {debt.paymentHistory && debt.paymentHistory.length > 0 && (
                         <button
@@ -303,6 +317,28 @@ const DebtTable: React.FC<DebtTableProps> = ({ debts, onEdit, onDelete, onMakePa
                   </td>
                 </tr>
 
+                {/* Transaction History Row */}
+                {showTransactionHistory === debt.id && (
+                  <tr>
+                    <td colSpan={7} className="p-0">
+                      <div className="bg-white/5 p-4 border-t border-white/10">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                            Riwayat Transaksi Terkait
+                          </h4>
+                          <button
+                            onClick={() => setShowTransactionHistory(null)}
+                            className="glass-button p-1 rounded"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <TransactionHistoryView debtId={debt.id} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
                 {/* Payment History Row */}
                 {showPaymentHistory === debt.id && debt.paymentHistory.length > 0 && (
                   <tr>
@@ -354,6 +390,73 @@ const DebtTable: React.FC<DebtTableProps> = ({ debts, onEdit, onDelete, onMakePa
           </tbody>
         </table>
       </div>
+    </div>
+  );
+};
+
+// Component untuk menampilkan riwayat transaksi
+const TransactionHistoryView: React.FC<{ debtId: string }> = ({ debtId }) => {
+  const { getDebtTransactions } = useTransactionStore();
+  const { getWalletById } = useWalletStore();
+  const { isDark } = useThemeStore();
+  
+  const transactions = getDebtTransactions(debtId);
+
+  if (transactions.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className={`text-sm opacity-70 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+          Tidak ada transaksi terkait ditemukan
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {transactions.map((transaction) => {
+        const wallet = getWalletById(transaction.walletId);
+        return (
+          <div key={transaction.id} className="flex items-center justify-between p-3 glass-button rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                transaction.type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'
+              }`}>
+                <span className={`text-sm font-bold ${
+                  transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
+                }`}>
+                  {transaction.type === 'income' ? '+' : '-'}
+                </span>
+              </div>
+              <div>
+                <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  {transaction.category}
+                </p>
+                <p className={`text-sm opacity-70 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+                  {wallet?.name} • {format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm', { locale: id })}
+                </p>
+                {transaction.description && (
+                  <p className={`text-sm opacity-60 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+                    {transaction.description}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <p className={`font-bold ${
+                transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
+              }`}>
+                {transaction.type === 'income' ? '+' : '-'}Rp {transaction.amount.toLocaleString('id-ID')}
+              </p>
+              <p className={`text-xs opacity-60 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+                {transaction.debtTransactionType === 'create' ? 'Transaksi Awal' : 
+                 transaction.debtTransactionType === 'payment' ? 'Pembayaran' : 
+                 'Lainnya'}
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

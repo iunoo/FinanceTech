@@ -1,0 +1,227 @@
+/* ===== WALLET CARDS ===== */
+.wallet-card {
+  transition: all var(--transition-normal) ease !important;
+  will-change: transform, border-color, box-shadow;
+}
+
+.wallet-card:hover {
+  border-color: var(--hover-border) !important;
+  box-shadow: 0 4px 12px 0 rgba(0, 204, 255, 0.3) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+/* Remove blue highlight on active wallet */
+.wallet-card.active {
+  border-color: var(--hover-border) !important;
+}
+
+/* ===== OPTIMIZED GLOW ANIMATIONS ===== */
+/* Red Glow for Zero Balance - More Intense */
+@keyframes pulse-glow-red {
+  0%, 100% {
+    box-shadow: 
+      0 0 10px rgba(239, 68, 68, 0.4),
+      0 0 20px rgba(239, 68, 68, 0.3),
+      0 0 30px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 20px rgba(239, 68, 68, 0.8),
+      0 0 40px rgba(239, 68, 68, 0.6),
+      0 0 60px rgba(239, 68, 68, 0.4);
+  }
+}
+
+/* Orange Glow for Low Balance - Moderate */
+@keyframes pulse-glow-orange {
+  0%, 100% {
+    box-shadow: 
+      0 0 8px rgba(249, 115, 22, 0.3),
+      0 0 16px rgba(249, 115, 22, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 15px rgba(249, 115, 22, 0.6),
+      0 0 30px rgba(249, 115, 22, 0.4);
+  }
+}
+
+/* Green Glow for High Balance */
+@keyframes pulse-glow-green {
+  0%, 100% {
+    box-shadow: 
+      0 0 8px rgba(16, 185, 129, 0.3),
+      0 0 16px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 15px rgba(16, 185, 129, 0.6),
+      0 0 30px rgba(16, 185, 129, 0.4);
+  }
+}
+
+/* Blue Glow for Very High Balance */
+@keyframes pulse-glow-blue {
+  0%, 100% {
+    box-shadow: 
+      0 0 8px rgba(59, 130, 246, 0.3),
+      0 0 16px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 15px rgba(59, 130, 246, 0.6),
+      0 0 30px rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* Border Pulse Animations - Lighter for Performance */
+@keyframes pulse-border-red {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 0.9);
+  }
+}
+
+@keyframes pulse-border-orange {
+  0%, 100% {
+    border-color: rgba(249, 115, 22, 0.4);
+  }
+  50% {
+    border-color: rgba(249, 115, 22, 0.8);
+  }
+}
+
+@keyframes pulse-border-green {
+  0%, 100% {
+    border-color: rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    border-color: rgba(16, 185, 129, 0.8);
+  }
+}
+
+@keyframes pulse-border-blue {
+  0%, 100% {
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    border-color: rgba(59, 130, 246, 0.8);
+  }
+}
+
+/* Subtle Bounce for Icons */
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Animation Classes */
+.animate-pulse-border-red {
+  animation: pulse-border-red 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-border-orange {
+  animation: pulse-border-orange 2.5s ease-in-out infinite;
+}
+
+.animate-pulse-border-green {
+  animation: pulse-border-green 2.5s ease-in-out infinite;
+}
+
+.animate-pulse-border-blue {
+  animation: pulse-border-blue 2.5s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+/* Reduce animations on mobile for better performance */
+@media (max-width: 768px) {
+  .wallet-card {
+    min-height: 120px;
+  }
+
+  /* Lighter animations on mobile */
+  .animate-pulse-border-red,
+  .animate-pulse-border-orange,
+  .animate-pulse-border-green,
+  .animate-pulse-border-blue {
+    animation-duration: 3s;
+    animation-iteration-count: 3;
+  }
+  
+  .animate-bounce-subtle {
+    animation: none; /* Disable bounce on mobile */
+  }
+
+  /* Reduce glow intensity on mobile */
+  @keyframes pulse-glow-red {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    }
+  }
+
+  @keyframes pulse-glow-orange {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(249, 115, 22, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+    }
+  }
+  
+  @keyframes pulse-glow-green {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(16, 185, 129, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+  }
+  
+  @keyframes pulse-glow-blue {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+  }
+}
+
+/* Disable heavy animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-border-red,
+  .animate-pulse-border-orange,
+  .animate-pulse-border-green,
+  .animate-pulse-border-blue,
+  .animate-bounce-subtle {
+    animation: none !important;
+  }
+  
+  .wallet-card {
+    transition: transform 0.1s ease !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .wallet-card {
+    border-width: 2px !important;
+  }
+  
+  .wallet-card:hover {
+    border-width: 3px !important;
+  }
+}

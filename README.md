@@ -1,265 +1,250 @@
-# Personal Finance Management App
+# FinanceTech - Personal Finance Management App
 
-A comprehensive personal finance management application with glassmorphism UI, AI-powered analysis, and Telegram bot integration.
+FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphism yang modern, analisis AI, dan integrasi bot Telegram.
 
-## Features
+## Fitur Utama
 
-### 🎨 Modern UI/UX
-- **Enhanced Glassmorphism Design**: Beautiful glass-like UI elements with blur effects and aurora backgrounds
-- **Aurora Backgrounds**: Animated gradient backgrounds (green aurora for light mode, solid black for dark mode)
-- **Responsive Design**: Works perfectly on desktop, tablet, and mobile with optimized performance
-- **Dark/Light Mode**: Toggle between themes with smooth transitions
-- **Custom Wallet Icons**: Upload custom images or use emojis for wallet icons
-- **Dynamic Balance Colors**: Customizable color coding based on balance ranges
+### 🎨 UI/UX Modern
+- **Desain Glassmorphism**: Elemen UI transparan dengan efek blur dan latar belakang aurora
+- **Tema Gelap/Terang**: Beralih antar tema dengan transisi mulus
+- **Ikon Dompet Kustom**: Unggah gambar atau gunakan emoji untuk ikon dompet
+- **Warna Saldo Dinamis**: Kode warna berdasarkan rentang saldo yang dapat disesuaikan
 
-### 💰 Enhanced Financial Management
-- **Smart Wallet System**: Custom wallet creation with image upload support
-- **Transaction Tracking**: Add, edit, delete income and expense transactions with improved UX
-- **Category Management**: Custom categories with color coding
-- **Date Filtering**: View transactions by day, week, month, or custom ranges
-- **Visual Analytics**: Interactive charts showing spending patterns and trends
-- **Transfer System**: Seamless money transfers between wallets
+### 💰 Manajemen Keuangan
+- **Sistem Dompet Pintar**: Pembuatan dompet kustom dengan dukungan unggah gambar
+- **Pelacakan Transaksi**: Tambah, edit, hapus transaksi pemasukan dan pengeluaran
+- **Manajemen Kategori**: Kategori kustom dengan kode warna
+- **Filter Tanggal**: Lihat transaksi berdasarkan hari, minggu, bulan, atau rentang kustom
+- **Analisis Visual**: Grafik interaktif yang menunjukkan pola pengeluaran dan tren
+- **Sistem Transfer**: Transfer uang antar dompet dengan mudah
 
-### 🎭 Advanced Animations & Performance
-- **Instant Hover Effects**: 0.1s transition for wallet cards with #00CCFF border highlight
-- **Smooth Page Transitions**: No flicker when switching tabs
-- **Performance Optimized**: `will-change: transform` for smooth animations
-- **Mobile Optimized**: Reduced animations on mobile devices for better performance
-- **Lazy Loading**: Optimized rendering for multiple wallets
+### 🎭 Animasi & Performa
+- **Efek Hover Instan**: Transisi 0.1s untuk kartu dompet dengan highlight border #00CCFF
+- **Transisi Halaman Mulus**: Tanpa kedipan saat beralih antar tab
+- **Performa Dioptimalkan**: `will-change: transform` untuk animasi mulus
+- **Optimasi Mobile**: Animasi dikurangi pada perangkat mobile untuk performa lebih baik
+- **Lazy Loading**: Rendering yang dioptimalkan untuk banyak dompet
 
-### 🛠️ Custom Wallet Features
-- **Custom Wallet Manager**: Create, edit, and delete custom wallets
-- **Image Upload**: Support for JPG/PNG wallet icons (max 100x100px, 1MB limit)
-- **Balance Alerts**: Customizable border effects based on balance thresholds
-- **Color Coding**: Custom color ranges for different balance levels
-- **Validation**: Prevent deletion of wallets with existing balance or transactions
+### 🛠️ Fitur Dompet Kustom
+- **Pengelola Dompet Kustom**: Buat, edit, dan hapus dompet kustom
+- **Unggah Gambar**: Dukungan untuk ikon dompet JPG/PNG (maks 100x100px, batas 1MB)
+- **Peringatan Saldo**: Efek border berdasarkan ambang batas saldo
+- **Kode Warna**: Rentang warna kustom untuk level saldo berbeda
+- **Validasi**: Mencegah penghapusan dompet dengan saldo atau transaksi yang ada
 
-### 🤖 AI-Powered Analysis
-- **ChatGPT Integration**: AI-driven financial insights and recommendations
-- **Smart Reports**: Automated analysis of spending patterns
-- **Budget Advice**: Personalized suggestions for financial improvement
-- **Trend Analysis**: Identify spending trends and savings opportunities
+### 🤖 Analisis AI
+- **Integrasi ChatGPT**: Wawasan dan rekomendasi keuangan berbasis AI
+- **Laporan Pintar**: Analisis otomatis pola pengeluaran
+- **Saran Anggaran**: Saran personal untuk perbaikan keuangan
+- **Analisis Tren**: Identifikasi tren pengeluaran dan peluang penghematan
 
-### 📱 Telegram Bot Integration
-- **Automated Reports**: Daily, weekly, and monthly financial summaries
-- **Debt Reminders**: Get notified 3 days before payment due dates
-- **Real-time Notifications**: Instant updates on your financial status
-- **Bot Commands**: Quick access to summaries and debt information
+### 📱 Integrasi Bot Telegram
+- **Laporan Otomatis**: Ringkasan keuangan harian, mingguan, dan bulanan
+- **Pengingat Hutang**: Dapatkan notifikasi 3 hari sebelum tanggal jatuh tempo
+- **Notifikasi Real-time**: Update instan status keuangan Anda
+- **Perintah Bot**: Akses cepat ke ringkasan dan informasi hutang
 
-### 💳 Debt & Credit Management
-- **Debt Tracking**: Monitor debts and credits with due dates
-- **Payment Reminders**: Automated notifications for upcoming payments
-- **Status Management**: Mark debts as paid and track payment history
-- **Risk Assessment**: Visual indicators for overdue and urgent payments
+### 💳 Manajemen Hutang & Piutang
+- **Pelacakan Hutang**: Pantau hutang dan piutang dengan tanggal jatuh tempo
+- **Pengingat Pembayaran**: Notifikasi otomatis untuk pembayaran mendatang
+- **Manajemen Status**: Tandai hutang sebagai lunas dan lacak riwayat pembayaran
+- **Penilaian Risiko**: Indikator visual untuk pembayaran yang terlambat dan mendesak
 
-## Technology Stack
+## Teknologi
 
 ### Frontend
-- **React 18** with TypeScript
-- **Tailwind CSS** for styling with custom glassmorphism effects
-- **Chart.js** for data visualization
-- **Zustand** for state management
-- **React Hook Form** for form handling
-- **Custom Toast System** for notifications
+- **React 18** dengan TypeScript
+- **Tailwind CSS** untuk styling dengan efek glassmorphism kustom
+- **Chart.js** untuk visualisasi data
+- **Zustand** untuk manajemen state
+- **React Hook Form** untuk penanganan formulir
+- **Sistem Toast Kustom** untuk notifikasi
 
 ### Backend
-- **Node.js** with Express.js
-- **MongoDB** with Mongoose ODM
-- **JWT** for authentication
-- **bcryptjs** for password hashing
-- **OpenAI API** for ChatGPT integration
-- **Telegram Bot API** for notifications
+- **Node.js** dengan Express.js
+- **MongoDB** dengan Mongoose ODM
+- **JWT** untuk autentikasi
+- **bcryptjs** untuk hashing password
+- **OpenAI API** untuk integrasi ChatGPT
+- **Telegram Bot API** untuk notifikasi
 
-## Setup Instructions
+## Fitur Baru & Perbaikan
 
-### Prerequisites
-- Node.js 18+ and npm
-- MongoDB database
-- OpenAI API key (for AI analysis)
-- Telegram Bot Token (for notifications)
+### ✨ Fitur Terbaru
+- **Pemilih Tanggal & Waktu yang Ditingkatkan**: Komponen pemilih tanggal dan waktu yang lebih compact dan profesional
+- **Validasi Tanggal Transaksi**: Mencegah transaksi dengan tanggal di masa depan
+- **Efek Glowing yang Ditingkatkan**: Efek visual yang lebih baik untuk status saldo berbeda
+- **Pengingat Hutang Kustom**: Pengaturan pengingat hutang yang dapat disesuaikan
+- **Kategorisasi Pintar**: Saran kategori otomatis berdasarkan deskripsi transaksi
 
-### 1. Clone and Install Dependencies
+### 🐛 Perbaikan Bug
+- **Perbaikan Parsing ID Transaksi**: Menangani format ID transaksi dengan benar
+- **Perbaikan Efek Glowing**: Memastikan efek glowing berfungsi untuk semua rentang warna
+- **Perbaikan Tampilan Dompet**: Warna teks saldo sekarang sesuai dengan pengaturan
+- **Perbaikan Pemilihan Dompet**: Menghilangkan highlight biru saat memilih dompet
+- **Optimasi Performa**: Mengurangi animasi yang berat untuk performa lebih baik
+
+## Instalasi di VPS
+
+### Prasyarat
+- Node.js 18+ dan npm
+- MongoDB (lokal atau cloud)
+- Nginx atau Apache sebagai web server
+- PM2 untuk menjalankan aplikasi sebagai service
+
+### 1. Persiapan Server
 
 ```bash
-# Install frontend dependencies
+# Update sistem
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js dan npm
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install PM2 secara global
+sudo npm install -g pm2
+
+# Install MongoDB (opsional, jika ingin menggunakan MongoDB lokal)
+sudo apt install -y mongodb
+sudo systemctl enable mongodb
+sudo systemctl start mongodb
+
+# Install Nginx
+sudo apt install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+```
+
+### 2. Clone dan Setup Proyek
+
+```bash
+# Clone repositori
+git clone https://github.com/iunoo/FinanceTech.git
+cd FinanceTech
+
+# Install dependensi frontend
 npm install
 
-# Install backend dependencies
+# Build frontend
+npm run build
+
+# Pindah ke direktori server dan install dependensi
 cd server
 npm install
 ```
 
-### 2. Environment Configuration
+### 3. Konfigurasi Environment
 
-Create a `.env` file in the `server` directory:
+Buat file `.env` di direktori `server`:
 
-```env
+```
 # Database
 MONGODB_URI=mongodb://localhost:27017/financeapp
 
 # JWT Secret
-JWT_SECRET=your-super-secret-jwt-key-here
+JWT_SECRET=your-super-secret-jwt-key-here-change-this-in-production
 
-# OpenAI API Key
+# OpenAI API Key (opsional)
 OPENAI_API_KEY=your-openai-api-key-here
 
-# Telegram Bot Token
+# Telegram Bot Token (opsional)
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
 
 # Server Port
 PORT=3001
 ```
 
-### 3. Database Setup
-
-Ensure MongoDB is running locally or provide a cloud MongoDB URI in the environment variables.
-
-### 4. Telegram Bot Setup
-
-1. Message [@BotFather](https://t.me/botfather) on Telegram
-2. Create a new bot with `/newbot`
-3. Get your bot token and add it to `.env`
-4. Set bot commands (optional):
-   ```
-   start - Welcome message and setup
-   summary - Get financial summary
-   debts - View upcoming debts
-   help - Show help information
-   ```
-
-### 5. OpenAI API Setup
-
-1. Create an account at [OpenAI](https://platform.openai.com/)
-2. Generate an API key
-3. Add the key to your `.env` file
-
-### 6. Run the Application
+### 4. Setup PM2 untuk Backend
 
 ```bash
-# Start the backend server
-cd server
-npm run dev
-
-# In a new terminal, start the frontend
-npm run dev
+# Di direktori server
+pm2 start index.js --name financetech-backend
+pm2 save
+pm2 startup
 ```
 
-The application will be available at `http://localhost:5173`
+### 5. Konfigurasi Nginx
 
-## Custom Wallet Setup Guide
+Buat file konfigurasi Nginx:
 
-### Creating Custom Wallets
+```bash
+sudo nano /etc/nginx/sites-available/financetech
+```
 
-1. **Navigate to Settings**: Go to Settings > Dompet tab
-2. **Add New Wallet**: Click "Tambah Dompet" button
-3. **Fill Details**:
-   - **Name**: Enter custom wallet name (e.g., "Tabungan Libur")
-   - **Type**: Choose Bank, E-Wallet, or Custom
-   - **Icon**: Upload image (JPG/PNG, max 1MB) or enter emoji
-   - **Initial Balance**: Set starting balance (for new wallets only)
+Tambahkan konfigurasi berikut:
 
-### Custom Icon Guidelines
+```nginx
+server {
+    listen 80;
+    server_name financetech.yourdomain.com; # Ganti dengan domain Anda
 
-- **Image Format**: JPG or PNG
-- **Size**: Recommended 100x100px (will be auto-resized)
-- **File Size**: Maximum 1MB
-- **Alternative**: Use emoji characters (🏦, 💰, 💳, etc.)
+    # Frontend (static files)
+    location / {
+        root /path/to/financetech/dist; # Ganti dengan path ke direktori build
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
 
-### Balance Color Settings
+    # Backend API
+    location /api {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
 
-1. **Go to Settings > Warna Saldo**
-2. **Configure Ranges**:
-   - Set minimum and maximum amounts
-   - Choose colors for each range
-   - Add descriptive labels
-3. **Examples**:
-   - Below Rp 50,000: Red (Saldo Rendah)
-   - Rp 50,001 - Rp 500,000: Orange (Saldo Normal)
-   - Above Rp 500,000: Green (Saldo Baik)
+Aktifkan konfigurasi:
 
-### Wallet Management Rules
+```bash
+sudo ln -s /etc/nginx/sites-available/financetech /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
 
-- **Deletion**: Cannot delete wallets with existing balance
-- **Transactions**: Cannot delete wallets with transaction history
-- **Active Wallet**: Always maintains one active wallet selection
-- **Custom Icons**: Persist across app sessions
+### 6. Setup SSL dengan Certbot (Opsional tapi Direkomendasikan)
 
-## Performance Optimizations
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d financetech.yourdomain.com
+```
 
-### Animation Performance
-- **Instant Hover**: 0.1s transitions for immediate feedback
-- **Will-Change**: Applied to frequently animated elements
-- **Mobile Optimization**: Reduced animations on mobile devices
-- **GPU Acceleration**: Hardware acceleration for smooth transforms
+### 7. Monitoring dan Maintenance
 
-### Loading Optimizations
-- **Lazy Loading**: Images and wallet data loaded on demand
-- **Debounced Updates**: Prevent excessive re-renders
-- **Memoization**: Cached calculations for balance colors
-- **Efficient Rendering**: Optimized component updates
+```bash
+# Melihat log backend
+pm2 logs financetech-backend
 
-### Browser Compatibility
+# Restart backend jika diperlukan
+pm2 restart financetech-backend
 
-- Chrome 88+
-- Firefox 87+
-- Safari 14+
-- Edge 88+
+# Update aplikasi
+cd /path/to/financetech
+git pull
+npm install
+npm run build
+cd server
+npm install
+pm2 restart financetech-backend
+```
 
-The glassmorphism effects require modern browsers with backdrop-filter support.
+## Pengembangan Selanjutnya
 
-## Testing Guidelines
+- [ ] Aplikasi mobile (React Native)
+- [ ] Integrasi rekening bank
+- [ ] Pelacakan investasi
+- [ ] Pelaporan lanjutan
+- [ ] Dukungan multi-mata uang
+- [ ] Ekspor ke Excel/PDF
 
-### Hover Effect Testing
-1. **Instant Response**: Hover over wallet cards should immediately show #00CCFF border
-2. **Smooth Transition**: Border should fade back to transparent when hover ends
-3. **Performance**: No lag or delay in hover effects
+## Lisensi
 
-### Tab Switching Testing
-1. **No Flicker**: Switching between tabs should be smooth without flash
-2. **State Persistence**: Wallet selections should persist across tab switches
-3. **Animation Continuity**: No interrupted animations when navigating
+Proyek ini dilisensikan di bawah [Lisensi MIT](LICENSE).
 
-### Custom Wallet Testing
-1. **Image Upload**: Test various image formats and sizes
-2. **Icon Display**: Verify custom icons appear correctly in all contexts
-3. **Balance Colors**: Test color changes with different balance amounts
-4. **Performance**: Test with 10+ custom wallets for performance
+## Repository
 
-### Mobile Responsiveness
-1. **Touch Targets**: All buttons meet 44px minimum touch target
-2. **Responsive Grid**: Wallet grid adapts to screen size
-3. **Performance**: Smooth scrolling and interactions on mobile
-4. **Animation Reduction**: Heavy animations disabled on mobile
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For support and questions:
-- Check the documentation
-- Review the code comments
-- Test the Telegram bot integration
-- Verify API configurations
-
-## Roadmap
-
-- [x] Enhanced glassmorphism design
-- [x] Custom wallet management
-- [x] Performance optimizations
-- [x] Mobile responsiveness
-- [ ] Mobile app (React Native)
-- [ ] Bank account integration
-- [ ] Investment tracking
-- [ ] Advanced reporting
-- [ ] Multi-currency support
-- [ ] Export to Excel/PDF
+Kode sumber tersedia di: https://github.com/iunoo/FinanceTech

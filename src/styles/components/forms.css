@@ -1,0 +1,67 @@
+/* ===== FORM IMPROVEMENTS ===== */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] { -moz-appearance: textfield; }
+
+.glass-input:focus,
+.glass-button:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+/* ===== DROPDOWN STYLING ===== */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none !important;
+  padding-right: 2.5rem;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid currentColor;
+  pointer-events: none;
+  opacity: 0.7;
+  z-index: 1;
+  transition: transform var(--transition-slow) ease;
+}
+
+.dropdown-container:hover::after {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.light-mode .dropdown-container::after { color: #374151; }
+.dark-mode .dropdown-container::after { color: #f9fafb; }
+
+.light-mode select {
+  background-color: var(--glass-bg-button-light) !important;
+  color: #1f2937;
+}
+
+.dark-mode select {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: #f9fafb;
+}
+
+.light-mode select option { background: #ffffff; color: #1f2937; }
+.dark-mode select option { background: #000000; color: #f9fafb; }

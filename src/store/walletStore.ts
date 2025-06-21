@@ -16,6 +16,7 @@ interface WalletState {
   addWallet: (wallet: Omit<Wallet, 'id'>) => void;
   updateWallet: (id: string, updates: Partial<Wallet>) => void;
   deleteWallet: (id: string) => void;
+  resetWalletBalance: (id: string) => void;
   setActiveWallet: (id: string) => void;
   getTotalBalance: () => number;
   getWalletById: (id: string) => Wallet | undefined;
@@ -62,6 +63,14 @@ export const useWalletStore = create<WalletState>()(
         set((state) => ({
           wallets: state.wallets.filter((w) => w.id !== id),
           activeWallet: state.activeWallet === id ? state.wallets[0]?.id || null : state.activeWallet,
+        }));
+      },
+
+      resetWalletBalance: (id) => {
+        set((state) => ({
+          wallets: state.wallets.map((w) =>
+            w.id === id ? { ...w, balance: 0 } : w
+          ),
         }));
       },
       

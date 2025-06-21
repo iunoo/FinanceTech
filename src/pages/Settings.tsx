@@ -8,12 +8,26 @@ import NotificationSettings from '../components/settings/NotificationSettings';
 import SecuritySettings from '../components/settings/SecuritySettings';
 import CategorySettings from '../components/settings/CategorySettings';
 import WalletColorSettings from '../components/settings/WalletColorSettings';
+import DatabaseSettings from '../components/settings/DatabaseSettings';
 import WalletManager from '../components/WalletManager';
+import RecurringTransactionManager from '../components/recurring/RecurringTransactionManager';
+import ExpensePatternAnalysis from '../components/analytics/ExpensePatternAnalysis';
+import SmartCategorization from '../components/analytics/SmartCategorization';
+import DebtReminderSettings from '../components/settings/DebtReminderSettings';
 
 const Settings: React.FC = () => {
   const { isDark } = useThemeStore();
   const [apiKeyStatus, setApiKeyStatus] = useState({ telegram: false, openai: false });
   const [activeTab, setActiveTab] = useState('general');
+
+  // Get tab from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, []);
 
   // Pengecekan status API yang benar-benar real
   useEffect(() => {
@@ -55,6 +69,10 @@ const Settings: React.FC = () => {
     { id: 'wallets', label: 'Dompet' },
     { id: 'categories', label: 'Kategori' },
     { id: 'colors', label: 'Warna Saldo' },
+    { id: 'recurring', label: 'Transaksi Berulang' },
+    { id: 'analytics', label: 'Analisis Cerdas' },
+    { id: 'reminders', label: 'Pengingat Utang' },
+    { id: 'database', label: 'Database & Cache' },
     { id: 'integration', label: 'Integrasi' },
     { id: 'security', label: 'Keamanan' },
   ];
@@ -105,6 +123,18 @@ const Settings: React.FC = () => {
             {activeTab === 'wallets' && <WalletManager />}
             {activeTab === 'categories' && <CategorySettings />}
             {activeTab === 'colors' && <WalletColorSettings />}
+            {activeTab === 'recurring' && <RecurringTransactionManager />}
+            {activeTab === 'reminders' && <DebtReminderSettings />}
+            
+            {activeTab === 'analytics' && (
+              <div className="space-y-8">
+                <ExpensePatternAnalysis />
+                <SmartCategorization />
+              </div>
+            )}
+
+            {activeTab === 'database' && <DatabaseSettings />}
+            
             {activeTab === 'integration' && (
               <div className="space-y-6">
                 <ApiKeySettings />

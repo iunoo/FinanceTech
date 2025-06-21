@@ -1,0 +1,40 @@
+/* ===== MODAL SYSTEM ===== */
+.glass-modal {
+  backdrop-filter: blur(var(--glass-blur-heavy));
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+}
+
+.light-mode .glass-modal {
+  background: var(--modal-overlay-light);
+}
+
+.dark-mode .glass-modal {
+  background: var(--modal-overlay-dark);
+}
+
+.modal-content {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.light-mode .modal-content {
+  background: var(--modal-bg-light);
+  border: var(--glass-border-dark);
+  box-shadow: 0 25px 50px 0 rgba(0, 0, 0, 0.25);
+}
+
+.dark-mode .modal-content {
+  background: var(--modal-bg-dark);
+  border: var(--glass-border-light);
+  box-shadow: 0 25px 50px 0 rgba(0, 0, 0, 0.8);
+}

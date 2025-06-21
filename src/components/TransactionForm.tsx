@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { X, Plus, ArrowRightLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, ArrowRightLeft, AlertTriangle, Lightbulb } from 'lucide-react';
 import { useTransactionStore, Transaction } from '../store/transactionStore';
 import { useWalletStore } from '../store/walletStore';
 import { useCategoryStore } from '../store/categoryStore';
+import { useAnalyticsStore } from '../store/analyticsStore';
 import { useThemeStore } from '../store/themeStore';
+import { transactionIdHelpers } from '../store/transactionIdStore';
 import WalletSelector from './WalletSelector';
 import CurrencyInput from './CurrencyInput';
+import DateTimePicker from './DateTimePicker';
+import TimePicker from './TimePicker';
 import { toast } from '../store/toastStore';
 
 interface TransactionFormProps {
@@ -33,8 +37,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   defaultType = 'expense' 
 }) => {
   const { addTransaction, updateTransaction } = useTransactionStore();
-  const { wallets, updateWallet } = useWalletStore();
+  const { wallets, updateWallet, getWalletById } = useWalletStore();
   const { getCategoriesByType } = useCategoryStore();
+  const { getSuggestedCategory } = useAnalyticsStore();
   const { isDark } = useThemeStore();
   
   const now = new Date();
@@ -50,6 +55,42 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
+  const [previewTransactionId, setPreviewTransactionId] = useState<string>('');
+
+  // Smart categorization effect
+  useEffect(() => {
+    if (formData.description && formData.type !== 'transfer' && !formData.category) {
+      const suggestion = getSuggestedCategory(formData.description, formData.amount);
+      setSuggestedCategory(suggestion);
+    } else {
+      setSuggestedCategory(null);
+    }
+  }, [formData.description, formData.amount, formData.type, formData.category]);
+
+  // Preview transaction ID
+  useEffect(() => {
+    if (formData.type && !transaction) {
+      const prefix = transactionIdHelpers.getPrefix(
+        formData.type,
+        formData.type === 'transfer',
+        false,
+        false
+      );
+      
+      // Generate preview ID (this won't actually increment the counter)
+      const now = new Date();
+      const yearStr = now.getFullYear().toString().slice(-2);
+      const monthStr = (now.getMonth() + 1).toString().padStart(2, '0');
+      
+      // Get next sequence number for preview
+      import('../store/transactionIdStore').then(({ useTransactionIdStore }) => {
+        const currentCounter = useTransactionIdStore.getState().getCurrentCounter(prefix);
+        const nextSequence = (currentCounter + 1).toString().padStart(4, '0');
+        setPreviewTransactionId(`${prefix}-${yearStr}${monthStr}${nextSequence}`);
+      });
+    }
+  }, [formData.type, transaction]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -64,6 +105,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
     if (!formData.walletId) {
       newErrors.walletId = 'Dompet wajib dipilih';
+    }
+
+    // VALIDASI SALDO WAJIB
+    const wallet = getWalletById(formData.walletId);
+    if (wallet) {
+      if (formData.type === 'expense' && wallet.balance < formData.amount) {
+        newErrors.amount = `Saldo tidak mencukupi! Saldo tersedia: Rp ${wallet.balance.toLocaleString('id-ID')}`;
+      }
+      
+      if (formData.type === 'transfer') {
+        if (wallet.balance < formData.amount) {
+          newErrors.amount = `Saldo tidak mencukupi untuk transfer! Saldo tersedia: Rp ${wallet.balance.toLocaleString('id-ID')}`;
+        }
+      }
     }
 
     if (formData.type === 'transfer') {
@@ -102,10 +157,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         return;
       }
 
+      // VALIDASI SALDO UNTUK TRANSFER
       if (wallet.balance < formData.amount) {
-        toast.error('Saldo tidak mencukupi untuk transfer!');
+        toast.error(`❌ Saldo tidak mencukupi untuk transfer!\n\nSaldo ${wallet.name}: Rp ${wallet.balance.toLocaleString('id-ID')}\nJumlah transfer: Rp ${formData.amount.toLocaleString('id-ID')}\nKekurangan: Rp ${(formData.amount - wallet.balance).toLocaleString('id-ID')}`);
         return;
       }
+
+      // Update saldo dompet
+      updateWallet(formData.walletId, { 
+        balance: wallet.balance - formData.amount 
+      });
 
       // Create transfer transactions (not included in analysis)
       const transferOut = {
@@ -129,15 +190,29 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         isTransfer: true // Mark as transfer to exclude from analysis
       };
 
-      updateWallet(formData.walletId, { balance: wallet.balance - formData.amount });
       updateWallet(formData.toWalletId!, { balance: toWallet.balance + formData.amount });
 
-      addTransaction(transferOut);
-      addTransaction(transferIn);
+      const outId = addTransaction(transferOut);
+      const inId = addTransaction(transferIn);
 
-      toast.success(`Transfer Rp ${formData.amount.toLocaleString('id-ID')} berhasil!`);
+      // Get the generated transaction IDs for display
+      import('../store/transactionStore').then(({ useTransactionStore }) => {
+        const store = useTransactionStore.getState();
+        const outTransaction = store.getTransactionById(outId);
+        const inTransaction = store.getTransactionById(inId);
+        
+        toast.success(`✅ Transfer berhasil!\n\n💸 ${outTransaction?.transactionId}: -Rp ${formData.amount.toLocaleString('id-ID')}\n💰 ${inTransaction?.transactionId}: +Rp ${formData.amount.toLocaleString('id-ID')}`);
+      });
     } else {
-      // Regular transaction
+      // Regular transaction with balance validation
+      if (formData.type === 'expense') {
+        // VALIDASI SALDO UNTUK PENGELUARAN
+        if (wallet.balance < formData.amount) {
+          toast.error(`❌ Saldo tidak mencukupi!\n\nSaldo ${wallet.name}: Rp ${wallet.balance.toLocaleString('id-ID')}\nJumlah pengeluaran: Rp ${formData.amount.toLocaleString('id-ID')}\nKekurangan: Rp ${(formData.amount - wallet.balance).toLocaleString('id-ID')}`);
+          return;
+        }
+      }
+
       const balanceChange = formData.type === 'income' ? formData.amount : -formData.amount;
       
       if (transaction) {
@@ -154,17 +229,24 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           ...formData,
           createdAt: dateTime.toISOString()
         });
-        toast.success('Transaksi berhasil diperbarui!');
+        toast.success(`✅ Transaksi ${transaction.transactionId} berhasil diperbarui!`);
       } else {
         updateWallet(formData.walletId, { 
           balance: wallet.balance + balanceChange 
         });
         
-        addTransaction({
+        const newTransactionId = addTransaction({
           ...formData,
           createdAt: dateTime.toISOString()
         });
-        toast.success('Transaksi berhasil ditambahkan!');
+
+        // Get the generated transaction ID for display
+        import('../store/transactionStore').then(({ useTransactionStore }) => {
+          const store = useTransactionStore.getState();
+          const newTransaction = store.getTransactionById(newTransactionId);
+          
+          toast.success(`✅ Transaksi ${newTransaction?.transactionId} berhasil ditambahkan!\n\n💰 ${formData.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}: ${formData.type === 'income' ? '+' : '-'}Rp ${formData.amount.toLocaleString('id-ID')}`);
+        });
       }
     }
     
@@ -181,40 +263,46 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       toWalletId: ''
     });
     setErrors({});
+    setSuggestedCategory(null);
+    setPreviewTransactionId('');
     onClose();
   };
+
+  const applySuggestedCategory = () => {
+    if (suggestedCategory) {
+      setFormData(prev => ({ ...prev, category: suggestedCategory }));
+      setSuggestedCategory(null);
+      toast.success(`Kategori "${suggestedCategory}" diterapkan!`);
+    }
+  };
+
+  // Real-time balance check
+  const selectedWallet = getWalletById(formData.walletId);
+  const isBalanceInsufficient = selectedWallet && 
+    ((formData.type === 'expense' && selectedWallet.balance < formData.amount) ||
+     (formData.type === 'transfer' && selectedWallet.balance < formData.amount));
 
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{
-        background: isDark 
-          ? 'rgba(0, 0, 0, 0.9)' 
-          : 'rgba(255, 255, 255, 0.4)',
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
-      }}
-    >
-      <div 
-        className="p-6 rounded-lg w-full max-w-3xl max-h-[85vh] overflow-y-auto"
-        style={{
-          background: isDark 
-            ? 'rgba(255, 255, 255, 0.05)' 
-            : 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)',
-          border: isDark 
-            ? '1px solid rgba(255, 255, 255, 0.1)' 
-            : '1px solid rgba(0, 0, 0, 0.1)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-        }}
-      >
+    <div className="glass-modal flex items-center justify-center p-4">
+      <div className="modal-content p-6 w-full max-w-3xl">
         <div className="flex items-center justify-between mb-6">
-          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            {transaction ? 'Edit Transaksi' : 'Tambah Transaksi'}
-          </h2>
+          <div>
+            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              {transaction ? 'Edit Transaksi' : 'Tambah Transaksi'}
+            </h2>
+            {!transaction && previewTransactionId && (
+              <p className={`text-sm opacity-70 mt-1 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+                ID Transaksi: <span className="font-mono font-bold text-blue-500">{previewTransactionId}</span>
+              </p>
+            )}
+            {transaction && (
+              <p className={`text-sm opacity-70 mt-1 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+                ID Transaksi: <span className="font-mono font-bold text-blue-500">{transaction.transactionId}</span>
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200"
@@ -331,6 +419,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 {errors.amount && (
                   <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
                 )}
+                
+                {/* Real-time Balance Warning */}
+                {isBalanceInsufficient && formData.amount > 0 && (
+                  <div className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                      <div className={`text-sm ${isDark ? 'text-red-200' : 'text-red-800'}`}>
+                        <p className="font-medium">❌ Saldo Tidak Mencukupi!</p>
+                        <p>Saldo tersedia: Rp {selectedWallet?.balance.toLocaleString('id-ID')}</p>
+                        <p>Dibutuhkan: Rp {formData.amount.toLocaleString('id-ID')}</p>
+                        <p>Kekurangan: Rp {(formData.amount - (selectedWallet?.balance || 0)).toLocaleString('id-ID')}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -360,6 +463,27 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   {errors.category && (
                     <p className="text-red-500 text-sm mt-1">{errors.category}</p>
                   )}
+
+                  {/* Smart Category Suggestion */}
+                  {suggestedCategory && !formData.category && (
+                    <div className="mt-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Lightbulb className="w-4 h-4 text-green-500" />
+                          <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                            Saran: {suggestedCategory}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={applySuggestedCategory}
+                          className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
+                        >
+                          Gunakan
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -378,30 +502,27 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 />
               </div>
 
-              {/* Date and Time */}
+              {/* Date and Time with Custom Components */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                     Tanggal
                   </label>
-                  <input
-                    type="date"
+                  <DateTimePicker
                     value={formData.date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                    className={`w-full p-3 glass-input ${isDark ? 'text-white' : 'text-gray-800'}`}
-                    style={{ fontSize: '16px' }}
+                    onChange={(date) => setFormData(prev => ({ ...prev, date }))}
+                    placeholder="Pilih tanggal"
+                    allowFuture={false} // Prevent future dates for transactions
                   />
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                     Jam
                   </label>
-                  <input
-                    type="time"
+                  <TimePicker
                     value={formData.time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                    className={`w-full p-3 glass-input ${isDark ? 'text-white' : 'text-gray-800'}`}
-                    style={{ fontSize: '16px' }}
+                    onChange={(time) => setFormData(prev => ({ ...prev, time }))}
+                    placeholder="Pilih waktu"
                   />
                 </div>
               </div>
@@ -421,7 +542,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2"
+              disabled={isBalanceInsufficient}
+              className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {formData.type === 'transfer' ? <ArrowRightLeft className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
               <span>{transaction ? 'Perbarui' : formData.type === 'transfer' ? 'Transfer' : 'Tambah'}</span>

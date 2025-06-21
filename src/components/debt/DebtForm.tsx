@@ -6,6 +6,7 @@ import { useWalletStore } from '../../store/walletStore';
 import { useThemeStore } from '../../store/themeStore';
 import WalletSelector from '../WalletSelector';
 import CurrencyInput from '../CurrencyInput';
+import DateTimePicker from '../DateTimePicker';
 import { toast } from '../../store/toastStore';
 
 interface DebtFormProps {
@@ -24,7 +25,7 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
     type: editingDebt?.type || 'debt',
     name: editingDebt?.name || '',
     amount: editingDebt?.amount || 0,
-    dueDate: editingDebt?.dueDate || '',
+    dueDate: editingDebt?.dueDate ? editingDebt.dueDate.split('T')[0] : '', // Remove time part
     description: editingDebt?.description || '',
   });
 
@@ -59,8 +60,12 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
       return;
     }
 
+    // Convert date to ISO string with time set to end of day
+    const dueDateWithTime = new Date(formData.dueDate + 'T23:59:59').toISOString();
+
     const debtData = {
       ...formData,
+      dueDate: dueDateWithTime,
       originalWalletId: walletId,
     };
 
@@ -95,19 +100,21 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
           isDebtTransaction: true,
           linkedDebtId: newDebtId,
           debtTransactionType: 'create',
+          debtType: 'debt',
         });
 
         // Update debt with transaction ID
         updateDebt(newDebtId, { originalTransactionId: transactionId });
 
-        toast.success(`✅ Utang dari ${formData.name} berhasil ditambahkan!\n\n💰 Saldo ${selectedWallet.name} bertambah Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi tercatat di riwayat`);
+        // Get the generated transaction ID for display
+        import('../../store/transactionStore').then(({ useTransactionStore }) => {
+          const store = useTransactionStore.getState();
+          const newTransaction = store.getTransactionById(transactionId);
+          
+          toast.success(`✅ Utang dari ${formData.name} berhasil ditambahkan!\n\n💰 Saldo ${selectedWallet.name} bertambah Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi ${newTransaction?.transactionId} tercatat di riwayat`);
+        });
       } else {
-        // PIUTANG: Saat memberikan piutang, SALDO BERKURANG
-        if (selectedWallet.balance < formData.amount) {
-          toast.error(`❌ Saldo ${selectedWallet.name} tidak mencukupi!\n\nSaldo saat ini: Rp ${selectedWallet.balance.toLocaleString('id-ID')}\nDibutuhkan: Rp ${formData.amount.toLocaleString('id-ID')}`);
-          return;
-        }
-
+        // PIUTANG: Saat memberikan piutang, SALDO BERKURANG (REMOVED balance check)
         updateWallet(walletId, { 
           balance: selectedWallet.balance - formData.amount 
         });
@@ -124,12 +131,19 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
           isDebtTransaction: true,
           linkedDebtId: newDebtId,
           debtTransactionType: 'create',
+          debtType: 'credit',
         });
 
         // Update debt with transaction ID
         updateDebt(newDebtId, { originalTransactionId: transactionId });
 
-        toast.success(`✅ Piutang ke ${formData.name} berhasil ditambahkan!\n\n💸 Saldo ${selectedWallet.name} dikurangi Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi tercatat di riwayat`);
+        // Get the generated transaction ID for display
+        import('../../store/transactionStore').then(({ useTransactionStore }) => {
+          const store = useTransactionStore.getState();
+          const newTransaction = store.getTransactionById(transactionId);
+          
+          toast.success(`✅ Piutang ke ${formData.name} berhasil ditambahkan!\n\n💸 Saldo ${selectedWallet.name} dikurangi Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi ${newTransaction?.transactionId} tercatat di riwayat`);
+        });
       }
     }
 
@@ -140,30 +154,8 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{
-        background: isDark 
-          ? 'rgba(0, 0, 0, 0.9)' 
-          : 'rgba(255, 255, 255, 0.4)',
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
-      }}
-    >
-      <div 
-        className="p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto"
-        style={{
-          background: isDark 
-            ? 'rgba(255, 255, 255, 0.05)' 
-            : 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)',
-          border: isDark 
-            ? '1px solid rgba(255, 255, 255, 0.1)' 
-            : '1px solid rgba(0, 0, 0, 0.1)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-        }}
-      >
+    <div className="glass-modal flex items-center justify-center p-4">
+      <div className="modal-content p-6 w-full max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
             {editingDebt ? 'Edit Utang/Piutang' : 'Tambah Utang/Piutang'}
@@ -217,103 +209,110 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
             </div>
           </div>
 
-          {/* Wallet Selection */}
-          {!editingDebt && (
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                💰 {formData.type === 'debt' ? 'Dompet Penerima Uang' : 'Sumber Dana'}
-              </label>
-              
-              <WalletSelector
-                selectedWallet={walletId}
-                onWalletChange={setWalletId}
-                showBalance={true}
-                filterByBalance={formData.type === 'credit'}
-              />
-              
-              {/* Info Box */}
-              <div className="mt-3 p-3 glass-button rounded-lg border-l-4 border-blue-500">
-                <div className="flex items-start space-x-2">
-                  <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <div className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    {formData.type === 'debt' ? (
-                      <>
-                        <p className="font-medium text-blue-500 mb-1">🔄 Dampak Transaksi Utang:</p>
-                        <p>• Saldo akan <span className="font-bold text-green-500">BERTAMBAH</span> (karena Anda menerima uang)</p>
-                        <p>• Transaksi "Utang Diterima" akan tercatat di riwayat</p>
-                        <p>• Saat bayar utang nanti, saldo akan <span className="font-bold text-red-500">DIKURANGI</span></p>
-                        <p className="text-orange-500 font-medium mt-1">⚠️ Jika transaksi dihapus dari riwayat, utang akan ikut terhapus</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-medium text-blue-500 mb-1">🔄 Dampak Transaksi Piutang:</p>
-                        <p>• Saldo akan <span className="font-bold text-red-500">DIKURANGI</span> (karena Anda memberikan uang)</p>
-                        <p>• Transaksi "Piutang Diberikan" akan tercatat di riwayat</p>
-                        <p>• Saat diterima kembali nanti, saldo akan <span className="font-bold text-green-500">BERTAMBAH</span></p>
-                        <p className="text-orange-500 font-medium mt-1">⚠️ Jika transaksi dihapus dari riwayat, piutang akan ikut terhapus</p>
-                      </>
-                    )}
+          {/* Main Form Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-4">
+              {/* Wallet Selection */}
+              {!editingDebt && (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                    💰 {formData.type === 'debt' ? 'Dompet Penerima Uang' : 'Sumber Dana'}
+                  </label>
+                  
+                  <WalletSelector
+                    selectedWallet={walletId}
+                    onWalletChange={setWalletId}
+                    showBalance={true}
+                  />
+                  
+                  {/* Info Box */}
+                  <div className="mt-3 p-3 glass-button rounded-lg border-l-4 border-blue-500">
+                    <div className="flex items-start space-x-2">
+                      <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <div className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                        {formData.type === 'debt' ? (
+                          <>
+                            <p className="font-medium text-blue-500 mb-1">🔄 Dampak Transaksi Utang:</p>
+                            <p>• Saldo akan <span className="font-bold text-green-500">BERTAMBAH</span> (karena Anda menerima uang)</p>
+                            <p>• Transaksi "Utang Diterima" (AP-YYMMXXXX) akan tercatat di riwayat</p>
+                            <p>• Saat bayar utang nanti, saldo akan <span className="font-bold text-red-500">DIKURANGI</span></p>
+                            <p className="text-orange-500 font-medium mt-1">⚠️ Jika transaksi dihapus dari riwayat, utang akan ikut terhapus</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium text-blue-500 mb-1">🔄 Dampak Transaksi Piutang:</p>
+                            <p>• Saldo akan <span className="font-bold text-red-500">DIKURANGI</span> (karena Anda memberikan uang)</p>
+                            <p>• Transaksi "Piutang Diberikan" (AR-YYMMXXXX) akan tercatat di riwayat</p>
+                            <p>• Saat diterima kembali nanti, saldo akan <span className="font-bold text-green-500">BERTAMBAH</span></p>
+                            <p className="text-orange-500 font-medium mt-1">⚠️ Jika transaksi dihapus dari riwayat, piutang akan ikut terhapus</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {/* Name */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Nama *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  className={`w-full p-3 glass-input ${isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'}`}
+                  placeholder={`Nama orang yang ${formData.type === 'debt' ? 'memberikan pinjaman' : 'meminjam uang'}`}
+                  style={{ fontSize: '16px' }}
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Jumlah *
+                </label>
+                <CurrencyInput
+                  value={formData.amount}
+                  onChange={(amount) => setFormData(prev => ({ ...prev, amount }))}
+                  placeholder="0"
+                  className="p-3"
+                />
               </div>
             </div>
-          )}
 
-          {/* Form Fields */}
-          <div className="space-y-4">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                Nama *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-                className={`w-full p-3 glass-input ${isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'}`}
-                placeholder={`Nama orang yang ${formData.type === 'debt' ? 'memberikan pinjaman' : 'meminjam uang'}`}
-                style={{ fontSize: '16px' }}
-              />
-            </div>
+            {/* Right Column */}
+            <div className="space-y-4">
+              {/* Due Date */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Tanggal Jatuh Tempo *
+                </label>
+                <DateTimePicker
+                  value={formData.dueDate}
+                  onChange={(date) => setFormData(prev => ({ ...prev, dueDate: date }))}
+                  placeholder="Pilih tanggal jatuh tempo"
+                  allowFuture={true} // Allow future dates for debt due dates
+                />
+              </div>
 
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                Jumlah *
-              </label>
-              <CurrencyInput
-                value={formData.amount}
-                onChange={(amount) => setFormData(prev => ({ ...prev, amount }))}
-                placeholder="0"
-                className="p-3"
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                Tanggal & Jam Jatuh Tempo *
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.dueDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                required
-                className={`w-full p-3 glass-input ${isDark ? 'text-white' : 'text-gray-800'}`}
-                style={{ fontSize: '16px' }}
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                Keterangan
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
-                className={`w-full p-3 glass-input ${isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'}`}
-                placeholder="Keterangan atau catatan opsional"
-                style={{ fontSize: '16px' }}
-              />
+              {/* Description */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Keterangan
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                  className={`w-full p-3 glass-input ${isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'}`}
+                  placeholder="Keterangan atau catatan opsional"
+                  style={{ fontSize: '16px' }}
+                />
+              </div>
             </div>
           </div>
 

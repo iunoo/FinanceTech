@@ -1,0 +1,72 @@
+/* ===== GLASS COMPONENTS ===== */
+.glass-card {
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-radius: 16px;
+  transition: all var(--transition-slow) ease;
+  will-change: transform;
+}
+
+.light-mode .glass-card {
+  background: var(--glass-bg-light);
+  border: var(--glass-border-dark);
+  box-shadow: var(--glass-shadow-light);
+}
+
+.dark-mode .glass-card {
+  background: var(--glass-bg-dark);
+  border: var(--glass-border-light);
+  box-shadow: var(--glass-shadow-dark);
+}
+
+.glass-button {
+  backdrop-filter: blur(var(--glass-blur-light));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light));
+  border-radius: 12px;
+  transition: all var(--transition-fast) ease;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.light-mode .glass-button {
+  background: var(--glass-bg-button-light);
+  border: var(--glass-border-dark);
+}
+
+.dark-mode .glass-button {
+  background: var(--glass-bg-button-dark);
+  border: var(--glass-border-light);
+}
+
+.glass-button:hover {
+  border-color: var(--hover-border) !important;
+  box-shadow: 0 4px 12px 0 var(--hover-shadow);
+  transform: translateY(-2px);
+}
+
+.glass-input {
+  backdrop-filter: blur(var(--glass-blur-light));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light));
+  border-radius: 12px;
+  transition: all var(--transition-slow) ease;
+}
+
+.light-mode .glass-input {
+  background: var(--glass-bg-button-light);
+  border: var(--glass-border-dark);
+  color: #1f2937;
+}
+
+.dark-mode .glass-input {
+  background: var(--glass-bg-button-dark);
+  border: var(--glass-border-light);
+  color: #f9fafb;
+}
+
+.glass-input:focus {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+  outline: none;
+  transform: scale(1.02);
+}

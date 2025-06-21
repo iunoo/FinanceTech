@@ -1,0 +1,36 @@
+/* ===== CORE CSS VARIABLES ===== */
+:root {
+  /* Glass Effects */
+  --glass-blur: 15px;
+  --glass-blur-light: 10px;
+  --glass-blur-heavy: 25px;
+  
+  /* Borders */
+  --glass-border-light: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-border-dark: 1px solid rgba(0, 0, 0, 0.1);
+  
+  /* Shadows */
+  --glass-shadow-light: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  --glass-shadow-dark: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  
+  /* Backgrounds */
+  --glass-bg-light: rgba(255, 255, 255, 0.95);
+  --glass-bg-dark: rgba(255, 255, 255, 0.05);
+  --glass-bg-button-light: rgba(255, 255, 255, 0.98);
+  --glass-bg-button-dark: rgba(255, 255, 255, 0.08);
+  
+  /* Modal Backgrounds */
+  --modal-overlay-light: rgba(255, 255, 255, 0.4);
+  --modal-overlay-dark: rgba(0, 0, 0, 0.95);
+  --modal-bg-light: rgba(255, 255, 255, 0.98);
+  --modal-bg-dark: rgba(255, 255, 255, 0.08);
+  
+  /* Animation Durations */
+  --transition-fast: 0.1s;
+  --transition-normal: 0.2s;
+  --transition-slow: 0.3s;
+  
+  /* Hover Colors */
+  --hover-border: #00CCFF;
+  --hover-shadow: rgba(0, 204, 255, 0.2);
+}

@@ -1,22 +1,29 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit, Upload, X, Wallet } from 'lucide-react';
+import { Plus, Trash2, Edit, Upload, X, Wallet, Settings } from 'lucide-react';
 import { useWalletStore } from '../store/walletStore';
 import { useTransactionStore } from '../store/transactionStore';
 import { useThemeStore } from '../store/themeStore';
+import CurrencyInput from './CurrencyInput';
 import { toast } from '../store/toastStore';
 
 const WalletManager: React.FC = () => {
   const { wallets, addWallet, updateWallet, deleteWallet } = useWalletStore();
-  const { getTransactionsByWallet } = useTransactionStore();
+  const { getTransactionsByWallet, addTransaction } = useTransactionStore();
   const { isDark } = useThemeStore();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAdjustmentOpen, setIsAdjustmentOpen] = useState(false);
   const [editingWallet, setEditingWallet] = useState<any>(null);
+  const [adjustingWallet, setAdjustingWallet] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     type: 'bank' as 'bank' | 'ewallet' | 'custom',
     balance: 0,
     color: '#0066CC',
     icon: ''
+  });
+  const [adjustmentData, setAdjustmentData] = useState({
+    newBalance: 0,
+    reason: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,6 +61,84 @@ const WalletManager: React.FC = () => {
       deleteWallet(wallet.id);
       toast.success('Dompet berhasil dihapus!');
     }
+  };
+
+  const handleAdjustBalance = (wallet: any) => {
+    setAdjustingWallet(wallet);
+    setAdjustmentData({
+      newBalance: wallet.balance,
+      reason: ''
+    });
+    setIsAdjustmentOpen(true);
+  };
+
+  const handleSubmitAdjustment = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!adjustingWallet) return;
+
+    const currentBalance = adjustingWallet.balance;
+    const newBalance = adjustmentData.newBalance;
+    const difference = newBalance - currentBalance;
+
+    if (difference === 0) {
+      toast.info('Saldo tidak berubah');
+      return;
+    }
+
+    if (!adjustmentData.reason.trim()) {
+      toast.error('Alasan penyesuaian wajib diisi');
+      return;
+    }
+
+    // Update saldo dompet
+    updateWallet(adjustingWallet.id, { balance: newBalance });
+    
+    // Buat transaksi penyesuaian (ditandai khusus agar tidak masuk analisis)
+    const adjustmentDescription = `${adjustmentData.reason} (dari Rp ${currentBalance.toLocaleString('id-ID')} ke Rp ${newBalance.toLocaleString('id-ID')})`;
+    
+    if (difference > 0) {
+      // Saldo bertambah - buat transaksi pemasukan
+      addTransaction({
+        type: 'income',
+        amount: difference,
+        category: 'Penyesuaian Saldo',
+        description: adjustmentDescription,
+        date: new Date().toISOString().split('T')[0],
+        walletId: adjustingWallet.id,
+        createdAt: new Date().toISOString(),
+        isBalanceAdjustment: true, // Flag khusus untuk exclude dari analisis
+      });
+    } else {
+      // Saldo berkurang - buat transaksi pengeluaran
+      addTransaction({
+        type: 'expense',
+        amount: Math.abs(difference),
+        category: 'Penyesuaian Saldo',
+        description: adjustmentDescription,
+        date: new Date().toISOString().split('T')[0],
+        walletId: adjustingWallet.id,
+        createdAt: new Date().toISOString(),
+        isBalanceAdjustment: true, // Flag khusus untuk exclude dari analisis
+      });
+    }
+    
+    // Get the generated transaction ID for display
+    import('../store/transactionStore').then(({ useTransactionStore }) => {
+      const store = useTransactionStore.getState();
+      const transactions = store.getTransactionsByWallet(adjustingWallet.id);
+      const latestTransaction = transactions[0]; // Transactions are sorted newest first
+      
+      if (latestTransaction) {
+        toast.success(`✅ Saldo dompet ${adjustingWallet.name} berhasil disesuaikan!\n\n💰 Saldo sebelumnya: Rp ${currentBalance.toLocaleString('id-ID')}\n🔄 Saldo sekarang: Rp ${newBalance.toLocaleString('id-ID')}\n📝 Transaksi ${latestTransaction.transactionId} tercatat`);
+      } else {
+        toast.success(`✅ Saldo dompet ${adjustingWallet.name} berhasil disesuaikan!`);
+      }
+    });
+    
+    setIsAdjustmentOpen(false);
+    setAdjustingWallet(null);
+    setAdjustmentData({ newBalance: 0, reason: '' });
   };
 
   const handleEdit = (wallet: any) => {
@@ -138,6 +223,13 @@ const WalletManager: React.FC = () => {
               </div>
               <div className="flex space-x-1">
                 <button
+                  onClick={() => handleAdjustBalance(wallet)}
+                  className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200 hover:bg-blue-500/20"
+                  title="Sesuaikan Saldo"
+                >
+                  <Settings className="w-4 h-4 text-blue-500" />
+                </button>
+                <button
                   onClick={() => handleEdit(wallet)}
                   className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200"
                 >
@@ -159,6 +251,94 @@ const WalletManager: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Balance Adjustment Modal */}
+      {isAdjustmentOpen && (
+        <div className="fixed inset-0 glass-modal flex items-center justify-center z-50 p-4">
+          <div className="glass-card p-6 rounded-lg w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                Penyesuaian Saldo
+              </h3>
+              <button
+                onClick={() => setIsAdjustmentOpen(false)}
+                className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200"
+              >
+                <X className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAdjustment} className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Dompet: {adjustingWallet?.name}
+                </label>
+                <p className={`text-sm opacity-70 ${isDark ? 'text-white' : 'text-gray-600'}`}>
+                  Saldo saat ini: Rp {adjustingWallet?.balance.toLocaleString('id-ID')}
+                </p>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Saldo Baru
+                </label>
+                <CurrencyInput
+                  value={adjustmentData.newBalance}
+                  onChange={(amount) => setAdjustmentData(prev => ({ ...prev, newBalance: amount }))}
+                  placeholder="0"
+                  className="p-3"
+                />
+                {adjustmentData.newBalance !== adjustingWallet?.balance && (
+                  <p className={`text-sm mt-2 ${
+                    adjustmentData.newBalance > adjustingWallet?.balance ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {adjustmentData.newBalance > adjustingWallet?.balance ? '+' : ''}
+                    Rp {(adjustmentData.newBalance - adjustingWallet?.balance).toLocaleString('id-ID')}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Alasan Penyesuaian *
+                </label>
+                <textarea
+                  value={adjustmentData.reason}
+                  onChange={(e) => setAdjustmentData(prev => ({ ...prev, reason: e.target.value }))}
+                  rows={3}
+                  className={`w-full p-3 glass-input ${isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'}`}
+                  placeholder="Contoh: Koreksi saldo bank, cash yang hilang, dll"
+                  required
+                />
+              </div>
+
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
+                  💡 <strong>Catatan:</strong> Transaksi penyesuaian (BA-YYMMXXXX) tidak akan mempengaruhi laporan analisis keuangan.
+                </p>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAdjustmentOpen(false)}
+                  className={`flex-1 py-3 px-4 glass-button rounded-lg font-medium transition-all duration-200 hover:transform hover:scale-105 ${
+                    isDark ? 'text-white' : 'text-gray-800'
+                  }`}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:transform hover:scale-105 transition-all duration-200"
+                >
+                  Sesuaikan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Form Modal */}
       {isFormOpen && (

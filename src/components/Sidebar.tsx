@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Home, 
@@ -9,18 +9,11 @@ import {
   LogOut,
   Wallet,
   X,
-  Bell,
-  Bot,
-  BrainCircuit,
-  Sun,
-  Moon,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
-import { useNotificationStore } from '../store/notificationStore';
-import NotificationCenter from './NotificationCenter';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -31,15 +24,11 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) => {
   const { logout, user } = useAuthStore();
-  const { isDark, toggleTheme } = useThemeStore();
-  const { getUnreadCount } = useNotificationStore();
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [botStatus, setBotStatus] = useState(false);
-  const [aiStatus, setAiStatus] = useState(false);
+  const { isDark } = useThemeStore();
   const [isHovered, setIsHovered] = useState(false);
-  const [autoShowTimeout, setAutoShowTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  const unreadCount = getUnreadCount();
+  const [autoExpandTimeout, setAutoExpandTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [autoCollapseTimeout, setAutoCollapseTimeout] = useState<NodeJS.Timeout | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { to: '/', icon: Home, label: 'Beranda' },
@@ -49,59 +38,66 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
     { to: '/settings', icon: Settings, label: 'Pengaturan' },
   ];
 
-  // Check API status
-  useEffect(() => {
-    const checkApiStatus = async () => {
-      try {
-        const botResponse = await fetch('/api/telegram/status', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        const botData = await botResponse.json();
-        setBotStatus(botData.status === 'online');
-        
-        const aiResponse = await fetch('/api/analysis/status', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        const aiData = await aiResponse.json();
-        setAiStatus(aiData.status === 'online');
-      } catch (error) {
-        setBotStatus(false);
-        setAiStatus(false);
-      }
-    };
+  // Clear all timeouts
+  const clearAllTimeouts = () => {
+    if (autoExpandTimeout) {
+      clearTimeout(autoExpandTimeout);
+      setAutoExpandTimeout(null);
+    }
+    if (autoCollapseTimeout) {
+      clearTimeout(autoCollapseTimeout);
+      setAutoCollapseTimeout(null);
+    }
+  };
 
-    checkApiStatus();
-    const interval = setInterval(checkApiStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Auto show/hide logic
+  // Auto expand when collapsed and hovered
   const handleMouseEnter = () => {
     setIsHovered(true);
-    if (isCollapsed && !isOpen) {
+    clearAllTimeouts();
+    
+    if (isCollapsed && onToggleCollapse) {
       const timeout = setTimeout(() => {
-        if (onToggleCollapse) {
+        if (isHovered) {
           onToggleCollapse();
         }
-      }, 300); // 300ms delay
-      setAutoShowTimeout(timeout);
+      }, 300); // 300ms delay for expansion
+      setAutoExpandTimeout(timeout);
     }
   };
 
+  // Auto collapse when expanded and not hovered
   const handleMouseLeave = () => {
     setIsHovered(false);
-    if (autoShowTimeout) {
-      clearTimeout(autoShowTimeout);
-      setAutoShowTimeout(null);
-    }
+    clearAllTimeouts();
     
-    // Auto hide after 2 seconds
-    setTimeout(() => {
-      if (!isHovered && !isCollapsed && onToggleCollapse) {
-        onToggleCollapse();
-      }
-    }, 2000);
+    if (!isCollapsed && onToggleCollapse) {
+      const timeout = setTimeout(() => {
+        if (!isHovered && onToggleCollapse) {
+          onToggleCollapse();
+        }
+      }, 2000); // 2 second delay for collapse
+      setAutoCollapseTimeout(timeout);
+    }
   };
+
+  // Manual toggle - ONLY triggered by chevron button click
+  const handleManualToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    clearAllTimeouts();
+    
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    }
+  };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      clearAllTimeouts();
+    };
+  }, []);
 
   return (
     <>
@@ -115,6 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
 
       {/* Sidebar */}
       <div 
+        ref={sidebarRef}
         className={`
           fixed md:relative
           ${isCollapsed ? 'w-20' : 'w-72'} h-full 
@@ -127,6 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Header */}
         <div className="p-6">
           <div className="flex items-center justify-between">
             <div className={`flex items-center space-x-3 ${isCollapsed ? 'justify-center' : ''}`}>
@@ -136,7 +134,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
               {!isCollapsed && (
                 <div>
                   <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    KeuanganKu
+                    FinanceTech
                   </h1>
                   <p className={`text-sm opacity-70 ${isDark ? 'text-white' : 'text-gray-600'}`}>
                     Manajemen Keuangan
@@ -152,21 +150,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
             >
               <X className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
             </button>
-
-            {/* Desktop Collapse Toggle - Clean Arrow */}
-            <button
-              onClick={onToggleCollapse}
-              className="hidden md:block glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200"
-            >
-              {isCollapsed ? (
-                <ChevronRight className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
-              ) : (
-                <ChevronLeft className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
-              )}
-            </button>
           </div>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 px-4">
           <ul className="space-y-2">
             {navItems.map((item) => (
@@ -192,25 +179,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
           </ul>
         </nav>
 
-        {/* Status Indicators & Controls */}
+        {/* Bottom Section */}
         <div className="p-4 space-y-3">
-          {/* API Status - Clean & Minimal */}
-          {!isCollapsed && (
-            <div className="flex items-center justify-center space-x-3">
-              <div className={`status-indicator ${
-                botStatus ? 'status-online' : 'status-offline'
-              }`}>
-                <Bot className="w-3 h-3" />
-                <span className="text-xs">Bot</span>
+          {/* Desktop Collapse Toggle - Moved above logout */}
+          <button
+            onClick={handleManualToggle}
+            className="hidden md:flex w-full items-center justify-center glass-button p-3 rounded-lg hover:transform hover:scale-105 transition-all duration-200 hover:bg-blue-500/20"
+            title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+            ) : (
+              <div className="flex items-center space-x-2">
+                <ChevronLeft className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+                <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  Collapse
+                </span>
               </div>
-              <div className={`status-indicator ${
-                aiStatus ? 'status-online' : 'status-offline'
-              }`}>
-                <BrainCircuit className="w-3 h-3" />
-                <span className="text-xs">AI</span>
-              </div>
-            </div>
-          )}
+            )}
+          </button>
 
           {/* Logout Button */}
           <button
@@ -226,11 +213,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed = false,
           </button>
         </div>
       </div>
-
-      <NotificationCenter 
-        isOpen={isNotificationOpen}
-        onClose={() => setIsNotificationOpen(false)}
-      />
     </>
   );
 };
