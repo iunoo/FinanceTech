@@ -14,3 +14,97 @@
   .glass-card, .glass-button { border-width: 2px; }
   .wallet-card:hover { border-width: 3px; }
 }
+
+/* ===== MOBILE OPTIMIZATION ===== */
+@media (max-width: 480px) {
+  /* Increase touch targets */
+  button, a, input[type="checkbox"], input[type="radio"], select, .dropdown-container {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimize font sizes for readability */
+  body {
+    font-size: 16px;
+  }
+  
+  input, select, textarea, button {
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
+  }
+  
+  /* Improve form elements */
+  .glass-input {
+    padding: 12px !important;
+  }
+  
+  /* Optimize modal display */
+  .modal-content {
+    width: 95% !important;
+    max-height: 80vh !important;
+    padding: 16px !important;
+  }
+  
+  /* Reduce animations for performance */
+  .wallet-card, .glass-card, .glass-button {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+  
+  /* Disable hover effects that cause lag */
+  .hover\:transform, .hover\:scale-105, .hover\:scale-110 {
+    transform: none !important;
+  }
+  
+  /* Improve scrolling performance */
+  .overflow-y-auto, .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Optimize charts for small screens */
+  .h-64 {
+    height: 200px !important;
+  }
+  
+  /* Reduce padding to maximize screen space */
+  .p-6 {
+    padding: 12px !important;
+  }
+  
+  .space-y-6 {
+    margin-bottom: 60px !important; /* Add space at bottom for better scrolling */
+  }
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+/* Use passive event listeners */
+.passive-events {
+  touch-action: pan-y;
+}
+
+/* Optimize paint performance */
+.optimize-paint {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Reduce layout thrashing */
+.optimize-layout {
+  contain: layout;
+}
+
+/* Optimize for low-end devices */
+@media (prefers-reduced-data: reduce) {
+  /* Disable background effects */
+  .aurora-bg {
+    background: none !important;
+    animation: none !important;
+  }
+  
+  /* Disable blur effects */
+  .glass-card, .glass-button, .glass-input, .glass-modal, .modal-content {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Filter, Search, Eye, Lock, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, Filter, Search, Eye, Lock, Copy, Calendar, Download } from 'lucide-react';
 import { useTransactionStore } from '../store/transactionStore';
 import { useWalletStore } from '../store/walletStore';
 import { useThemeStore } from '../store/themeStore';
 import { transactionIdHelpers } from '../store/transactionIdStore';
 import TransactionForm from '../components/TransactionForm';
+import ExportDataButton from '../components/ExportDataButton';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from '../store/toastStore';
+import DateTimePicker from '../components/DateTimePicker';
 
 const Transactions: React.FC = () => {
   const { transactions, deleteTransaction, getTransactionStats } = useTransactionStore();
@@ -18,6 +20,9 @@ const Transactions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterWallet, setFilterWallet] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
   const stats = getTransactionStats();
 
@@ -27,7 +32,18 @@ const Transactions: React.FC = () => {
                          transaction.transactionId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || transaction.type === filterType;
     const matchesWallet = filterWallet === 'all' || transaction.walletId === filterWallet;
-    return matchesSearch && matchesType && matchesWallet;
+    
+    // Date filter
+    let matchesDate = true;
+    if (startDate && endDate) {
+      const transactionDate = new Date(transaction.date);
+      const filterStartDate = new Date(startDate);
+      const filterEndDate = new Date(endDate);
+      filterEndDate.setHours(23, 59, 59, 999); // End of day
+      matchesDate = transactionDate >= filterStartDate && transactionDate <= filterEndDate;
+    }
+    
+    return matchesSearch && matchesType && matchesWallet && matchesDate;
   });
 
   const handleEdit = (transaction) => {
@@ -89,6 +105,11 @@ const Transactions: React.FC = () => {
     return transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
   };
 
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
+  };
+
   return (
     <div className="space-y-6 page-transition">
       {/* Header */}
@@ -96,16 +117,72 @@ const Transactions: React.FC = () => {
         <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
           Transaksi
         </h1>
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="glass-button px-6 py-3 rounded-lg hover:transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
-        >
-          <Plus className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
-          <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            Tambah Transaksi
-          </span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setShowDateFilter(!showDateFilter)}
+            className="glass-button px-4 py-2 rounded-lg hover:transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
+          >
+            <Calendar className={`w-4 h-4 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              {showDateFilter ? 'Sembunyikan Filter' : 'Filter Tanggal'}
+            </span>
+          </button>
+          
+          <ExportDataButton 
+            startDate={startDate}
+            endDate={endDate}
+            walletId={filterWallet !== 'all' ? filterWallet : undefined}
+          />
+          
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="glass-button px-6 py-3 rounded-lg hover:transform hover:scale-105 transition-all duration-200 flex items-center space-x-2"
+          >
+            <Plus className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+            <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              Tambah Transaksi
+            </span>
+          </button>
+        </div>
       </div>
+
+      {/* Date Filter */}
+      {showDateFilter && (
+        <div className="glass-card p-4 rounded-lg">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="flex-1">
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                Dari Tanggal
+              </label>
+              <DateTimePicker
+                value={startDate}
+                onChange={setStartDate}
+                placeholder="Pilih tanggal mulai"
+              />
+            </div>
+            <div className="flex-1">
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                Sampai Tanggal
+              </label>
+              <DateTimePicker
+                value={endDate}
+                onChange={setEndDate}
+                placeholder="Pilih tanggal akhir"
+              />
+            </div>
+            <div className="flex items-end space-x-2 mt-6">
+              <button
+                onClick={clearDateFilter}
+                className={`px-4 py-2.5 glass-button rounded-lg text-sm hover:transform hover:scale-105 transition-all duration-200 ${
+                  isDark ? 'text-white' : 'text-gray-800'
+                }`}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Transaction Statistics - More Compact */}
       <div className="glass-card p-4 rounded-lg">
@@ -339,7 +416,7 @@ const Transactions: React.FC = () => {
               Tidak ada transaksi ditemukan
             </p>
             <p className={`text-sm opacity-50 mt-2 ${isDark ? 'text-white' : 'text-gray-600'}`}>
-              {searchTerm || filterType !== 'all' || filterWallet !== 'all'
+              {searchTerm || filterType !== 'all' || filterWallet !== 'all' || (startDate && endDate)
                 ? 'Coba sesuaikan pencarian atau filter Anda'
                 : 'Tambahkan transaksi pertama Anda untuk memulai'
               }

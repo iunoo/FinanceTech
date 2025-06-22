@@ -42,4 +42,94 @@
   .animate-slide-in {
     animation-duration: 0.3s;
   }
+  
+  /* Mobile-specific optimizations */
+  .modal-content {
+    max-height: 85vh;
+    width: 95%;
+    margin: 0 auto;
+  }
+  
+  /* Improve table display on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  /* Optimize charts for mobile */
+  .h-64 {
+    height: 250px !important;
+  }
+  
+  /* Improve touch targets */
+  button, a, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimize form layouts */
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Improve spacing */
+  .space-y-6 {
+    margin-bottom: 4rem;
+  }
+  
+  /* Fix bottom padding for scrolling */
+  body {
+    padding-bottom: 80px;
+  }
+  
+  /* Optimize wallet cards for mobile */
+  .grid-cols-2.sm\:grid-cols-3.md\:grid-cols-4.lg\:grid-cols-5.xl\:grid-cols-6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Optimize font sizes */
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Reduce padding */
+  .p-6 {
+    padding: 1rem !important;
+  }
+  
+  /* Optimize transaction list */
+  .transaction-list-mobile {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Improve scrolling performance */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-cols-2.sm\:grid-cols-3.md\:grid-cols-4.lg\:grid-cols-5.xl\:grid-cols-6 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .glass-card {
+    padding: 1.25rem;
+  }
+}
+
+/* Reduce motion for better performance on low-end devices */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

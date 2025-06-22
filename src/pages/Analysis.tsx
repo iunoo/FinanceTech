@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js';
 import { Pie, Line } from 'react-chartjs-2';
-import { Brain, Calendar, TrendingUp, DollarSign, RefreshCw } from 'lucide-react';
+import { Brain, Calendar, TrendingUp, DollarSign, RefreshCw, Download } from 'lucide-react';
 import { useTransactionStore } from '../store/transactionStore';
 import { useThemeStore } from '../store/themeStore';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
-import toast from 'react-hot-toast';
+import { toast } from '../store/toastStore';
+import ExportDataButton from '../components/ExportDataButton';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title);
 
@@ -196,21 +197,28 @@ const Analysis: React.FC = () => {
         <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
           Analisis Keuangan
         </h1>
-        <div className="flex items-center space-x-2">
-          <Calendar className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-500'} opacity-50`} />
-          <div className="dropdown-container">
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className={`px-4 py-2 glass-input ${isDark ? 'text-white' : 'text-gray-800'}`}
-              style={{ fontSize: '16px' }}
-            >
-              <option value="week" className={isDark ? 'bg-black' : 'bg-white'}>Minggu Terakhir</option>
-              <option value="month" className={isDark ? 'bg-black' : 'bg-white'}>Bulan Ini</option>
-              <option value="quarter" className={isDark ? 'bg-black' : 'bg-white'}>3 Bulan Terakhir</option>
-              <option value="year" className={isDark ? 'bg-black' : 'bg-white'}>Tahun Ini</option>
-            </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-2">
+            <Calendar className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-500'} opacity-50`} />
+            <div className="dropdown-container">
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className={`px-4 py-2 glass-input ${isDark ? 'text-white' : 'text-gray-800'}`}
+                style={{ fontSize: '16px' }}
+              >
+                <option value="week" className={isDark ? 'bg-black' : 'bg-white'}>Minggu Terakhir</option>
+                <option value="month" className={isDark ? 'bg-black' : 'bg-white'}>Bulan Ini</option>
+                <option value="quarter" className={isDark ? 'bg-black' : 'bg-white'}>3 Bulan Terakhir</option>
+                <option value="year" className={isDark ? 'bg-black' : 'bg-white'}>Tahun Ini</option>
+              </select>
+            </div>
           </div>
+          
+          <ExportDataButton 
+            startDate={start.toISOString()}
+            endDate={end.toISOString()}
+          />
         </div>
       </div>
 
