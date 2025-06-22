@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from './authStore';
 
 export interface Category {
   id: string;
+  userId: string;
   name: string;
   type: 'income' | 'expense';
   color: string;
@@ -11,76 +14,186 @@ export interface Category {
 
 interface CategoryState {
   categories: Category[];
-  addCategory: (category: Omit<Category, 'id' | 'isDefault'>) => void;
-  updateCategory: (id: string, updates: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  addCategory: (category: Omit<Category, 'id' | 'userId' | 'isDefault'>) => Promise<string | null>;
+  updateCategory: (id: string, updates: Partial<Category>) => Promise<boolean>;
+  deleteCategory: (id: string) => Promise<boolean>;
   getCategoriesByType: (type: 'income' | 'expense') => Category[];
+  fetchCategories: () => Promise<void>;
 }
-
-const defaultCategories: Category[] = [
-  // Income categories
-  { id: '1', name: 'Gaji', type: 'income', color: '#10B981', isDefault: true },
-  { id: '2', name: 'Freelance', type: 'income', color: '#3B82F6', isDefault: true },
-  { id: '3', name: 'Investasi', type: 'income', color: '#8B5CF6', isDefault: true },
-  { id: '4', name: 'Bisnis', type: 'income', color: '#F59E0B', isDefault: true },
-  { id: '5', name: 'Bonus', type: 'income', color: '#EF4444', isDefault: true },
-  { id: '6', name: 'Hadiah', type: 'income', color: '#EC4899', isDefault: true },
-  { id: '7', name: 'Penjualan', type: 'income', color: '#06B6D4', isDefault: true },
-  { id: '8', name: 'Lainnya', type: 'income', color: '#6B7280', isDefault: true },
-  
-  // Expense categories
-  { id: '9', name: 'Makanan & Minuman', type: 'expense', color: '#EF4444', isDefault: true },
-  { id: '10', name: 'Transportasi', type: 'expense', color: '#3B82F6', isDefault: true },
-  { id: '11', name: 'Hiburan', type: 'expense', color: '#8B5CF6', isDefault: true },
-  { id: '12', name: 'Belanja', type: 'expense', color: '#EC4899', isDefault: true },
-  { id: '13', name: 'Tagihan', type: 'expense', color: '#F59E0B', isDefault: true },
-  { id: '14', name: 'Kesehatan', type: 'expense', color: '#10B981', isDefault: true },
-  { id: '15', name: 'Pendidikan', type: 'expense', color: '#06B6D4', isDefault: true },
-  { id: '16', name: 'Rumah Tangga', type: 'expense', color: '#84CC16', isDefault: true },
-  { id: '17', name: 'Pakaian', type: 'expense', color: '#F97316', isDefault: true },
-  { id: '18', name: 'Teknologi', type: 'expense', color: '#6366F1', isDefault: true },
-  { id: '19', name: 'Olahraga', type: 'expense', color: '#14B8A6', isDefault: true },
-  { id: '20', name: 'Lainnya', type: 'expense', color: '#6B7280', isDefault: true },
-];
 
 export const useCategoryStore = create<CategoryState>()(
   persist(
     (set, get) => ({
-      categories: defaultCategories,
+      categories: [],
+      isLoading: false,
+      error: null,
       
-      addCategory: (category) => {
-        const newCategory: Category = {
-          ...category,
-          id: Date.now().toString(),
-          isDefault: false,
-        };
-        set((state) => ({
-          categories: [...state.categories, newCategory],
-        }));
-      },
-      
-      updateCategory: (id, updates) => {
-        set((state) => ({
-          categories: state.categories.map((c) =>
-            c.id === id ? { ...c, ...updates } : c
-          ),
-        }));
-      },
-      
-      deleteCategory: (id) => {
-        const { categories } = get();
-        const category = categories.find(c => c.id === id);
-        if (category?.isDefault) {
-          return; // Cannot delete default categories
+      fetchCategories: async () => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return;
+        
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { data, error } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('user_id', currentUser.id);
+            
+          if (error) {
+            throw error;
+          }
+          
+          // Transform data to match our interface
+          const categories: Category[] = data.map(category => ({
+            id: category.id,
+            userId: category.user_id,
+            name: category.name,
+            type: category.type as 'income' | 'expense',
+            color: category.color,
+            isDefault: category.is_default,
+          }));
+          
+          set({ categories, isLoading: false });
+        } catch (error: any) {
+          console.error('Error fetching categories:', error.message);
+          set({ error: error.message, isLoading: false });
         }
-        set((state) => ({
-          categories: state.categories.filter((c) => c.id !== id),
-        }));
+      },
+      
+      addCategory: async (category) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return null;
+        
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { data, error } = await supabase
+            .from('categories')
+            .insert([
+              {
+                user_id: currentUser.id,
+                name: category.name,
+                type: category.type,
+                color: category.color,
+                is_default: false,
+              }
+            ])
+            .select()
+            .single();
+            
+          if (error) {
+            throw error;
+          }
+          
+          const newCategory: Category = {
+            id: data.id,
+            userId: data.user_id,
+            name: data.name,
+            type: data.type as 'income' | 'expense',
+            color: data.color,
+            isDefault: data.is_default,
+          };
+          
+          set(state => ({
+            categories: [...state.categories, newCategory],
+            isLoading: false
+          }));
+          
+          return newCategory.id;
+        } catch (error: any) {
+          console.error('Error adding category:', error.message);
+          set({ error: error.message, isLoading: false });
+          return null;
+        }
+      },
+      
+      updateCategory: async (id, updates) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return false;
+        
+        // Don't allow updating default categories
+        const category = get().categories.find(c => c.id === id);
+        if (category?.isDefault) return false;
+        
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { error } = await supabase
+            .from('categories')
+            .update({
+              name: updates.name,
+              type: updates.type,
+              color: updates.color,
+            })
+            .eq('id', id)
+            .eq('user_id', currentUser.id)
+            .eq('is_default', false); // Extra safety check
+            
+          if (error) {
+            throw error;
+          }
+          
+          set(state => ({
+            categories: state.categories.map(c => 
+              c.id === id ? { ...c, ...updates } : c
+            ),
+            isLoading: false
+          }));
+          
+          return true;
+        } catch (error: any) {
+          console.error('Error updating category:', error.message);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
+      },
+      
+      deleteCategory: async (id) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return false;
+        
+        // Don't allow deleting default categories
+        const category = get().categories.find(c => c.id === id);
+        if (category?.isDefault) return false;
+        
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { error } = await supabase
+            .from('categories')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUser.id)
+            .eq('is_default', false); // Extra safety check
+            
+          if (error) {
+            throw error;
+          }
+          
+          set(state => ({
+            categories: state.categories.filter(c => c.id !== id),
+            isLoading: false
+          }));
+          
+          return true;
+        } catch (error: any) {
+          console.error('Error deleting category:', error.message);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
       },
       
       getCategoriesByType: (type) => {
         const { categories } = get();
-        return categories.filter(c => c.type === type);
+        const currentUser = useAuthStore.getState().user;
+        
+        return categories.filter(c => 
+          c.type === type && 
+          c.userId === currentUser?.id
+        );
       },
     }),
     {

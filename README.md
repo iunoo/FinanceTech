@@ -33,7 +33,7 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Validasi**: Mencegah penghapusan dompet dengan saldo atau transaksi yang ada
 
 ### 🤖 Analisis AI
-- **Integrasi ChatGPT**: Wawasan dan rekomendasi keuangan berbasis AI
+- **Simulasi ChatGPT**: Wawasan dan rekomendasi keuangan berbasis analisis data
 - **Laporan Pintar**: Analisis otomatis pola pengeluaran
 - **Saran Anggaran**: Saran personal untuk perbaikan keuangan
 - **Analisis Tren**: Identifikasi tren pengeluaran dan peluang penghematan
@@ -91,8 +91,8 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 
 ### Langkah 3: Setup Database
 1. Buka tab **SQL Editor** di dashboard Supabase
-2. Jalankan SQL dari file `supabase/migrations/create_tables.sql` untuk membuat tabel
-3. Jalankan SQL dari file `supabase/migrations/seed_default_categories.sql` untuk menambahkan kategori default
+2. Jalankan SQL dari file `supabase/migrations/20250622045534_yellow_lagoon.sql` untuk membuat tabel
+3. Jalankan SQL dari file `supabase/migrations/20250622045556_damp_dawn.sql` untuk menambahkan trigger untuk kategori default
 
 ### Langkah 4: Konfigurasi Aplikasi
 1. Di dashboard Supabase, buka tab **Settings** > **API**
@@ -127,6 +127,48 @@ Untuk menjalankan FinanceTech dengan optimal untuk 1 pengguna, berikut rekomenda
 - Contabo ($4-$8/bulan)
 
 Dengan spesifikasi minimum 1GB RAM, aplikasi FinanceTech dapat berjalan dengan baik untuk 1 pengguna dengan optimasi yang sudah dijelaskan di panduan deployment. Untuk performa yang lebih baik, terutama jika menggunakan fitur AI dan Telegram Bot, disarankan menggunakan VPS dengan 2GB RAM.
+
+## Instalasi dan Pengembangan
+
+### Prasyarat
+- Node.js 18+ dan npm
+- Akun Supabase
+
+### Langkah Instalasi
+1. Clone repositori
+   ```bash
+   git clone https://github.com/iunoo/FinanceTech.git
+   cd FinanceTech
+   ```
+
+2. Install dependensi
+   ```bash
+   npm install
+   ```
+
+3. Buat file `.env` berdasarkan `.env.example`
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Isi kredensial Supabase di file `.env`
+   ```
+   VITE_SUPABASE_URL=your-supabase-url
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+
+5. Jalankan aplikasi dalam mode pengembangan
+   ```bash
+   npm run dev
+   ```
+
+### Deployment
+1. Build aplikasi
+   ```bash
+   npm run build
+   ```
+
+2. Deploy folder `dist` ke web server atau hosting statis
 
 ## Pengembangan Selanjutnya
 

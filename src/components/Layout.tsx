@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { useWalletStore } from '../store/walletStore';
 import { useTransactionStore } from '../store/transactionStore';
 import { useDebtStore } from '../store/debtStore';
+import { useCategoryStore } from '../store/categoryStore';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -15,6 +16,7 @@ const Layout: React.FC = () => {
   const { fetchWallets } = useWalletStore();
   const { fetchTransactions } = useTransactionStore();
   const { fetchDebts } = useDebtStore();
+  const { fetchCategories } = useCategoryStore();
 
   // Fetch data when user changes
   useEffect(() => {
@@ -22,8 +24,9 @@ const Layout: React.FC = () => {
       fetchWallets();
       fetchTransactions();
       fetchDebts();
+      fetchCategories();
     }
-  }, [user, fetchWallets, fetchTransactions, fetchDebts]);
+  }, [user, fetchWallets, fetchTransactions, fetchDebts, fetchCategories]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

@@ -2,9 +2,6 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
-import { useWalletStore } from './store/walletStore';
-import { useTransactionStore } from './store/transactionStore';
-import { useDebtStore } from './store/debtStore';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -17,25 +14,13 @@ import ToastContainer from './components/ToastContainer';
 import './styles/glassmorphism.css';
 
 function App() {
-  const { isAuthenticated, checkSession, updateActivity, user } = useAuthStore();
-  const { fetchWallets } = useWalletStore();
-  const { fetchTransactions } = useTransactionStore();
-  const { fetchDebts } = useDebtStore();
+  const { isAuthenticated, checkSession, updateActivity } = useAuthStore();
   const { isDark } = useThemeStore();
 
   // Check session on app load
   useEffect(() => {
     checkSession();
   }, [checkSession]);
-
-  // Fetch data when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchWallets();
-      fetchTransactions();
-      fetchDebts();
-    }
-  }, [isAuthenticated, user, fetchWallets, fetchTransactions, fetchDebts]);
 
   // Update activity on user interaction
   useEffect(() => {

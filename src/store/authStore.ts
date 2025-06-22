@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase, getCurrentUser, getCurrentSession } from '../lib/supabase';
-import { passwordUtils, sessionUtils } from '../utils/security';
-import { toast } from './toastStore';
+import { sessionUtils } from '../utils/security';
 
 interface User {
   id: string;
@@ -17,7 +16,7 @@ interface AuthState {
   lastActivity: number;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<boolean>;
   checkSession: () => Promise<boolean>;
   updateActivity: () => void;

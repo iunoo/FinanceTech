@@ -170,6 +170,32 @@ export interface Database {
           is_default?: boolean
         }
       }
+      profiles: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          telegram_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          email: string
+          telegram_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          telegram_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       user_settings: {
         Row: {
           id: string
