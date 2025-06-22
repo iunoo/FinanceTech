@@ -40,9 +40,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
         style={{
           width: '320px',
           maxHeight: '450px',
-          background: isDark 
-            ? 'rgba(255, 255, 255, 0.05)' 
-            : 'rgba(255, 255, 255, 0.95)',
+          background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(15px)',
           WebkitBackdropFilter: 'blur(15px)',
           border: isDark 
