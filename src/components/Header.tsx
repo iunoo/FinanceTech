@@ -79,18 +79,20 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             </button>
 
             {/* Notification Button with Red Dot */}
-            <button 
-              onClick={() => setIsNotificationOpen(true)}
-              className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200 relative"
-              title="Notifikasi"
-            >
-              <Bell className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="glass-button p-2 rounded-lg hover:transform hover:scale-110 transition-all duration-200"
+                title="Notifikasi"
+              >
+                <Bell className={`w-5 h-5 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </div>
 
             {/* User Profile */}
             <div className="glass-button p-2 rounded-lg">

@@ -30,7 +30,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="fixed top-4 right-4 z-[9999]">
+    <div className="fixed top-0 right-0 z-[9999] mt-16 mr-4">
       <div 
         className={`rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-out transform ${
           isVisible 

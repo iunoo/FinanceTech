@@ -82,7 +82,7 @@ const ExportDataButton: React.FC<ExportDataButtonProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `transaksi_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
+      link.setAttribute('download', `FinanceTech_Transaksi_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -109,7 +109,8 @@ const ExportDataButton: React.FC<ExportDataButtonProps> = ({
           exportDate: new Date().toISOString(),
           totalTransactions: filteredTransactions.length,
           dateRange: startDate && endDate ? `${startDate} to ${endDate}` : 'All time',
-          wallet: walletId ? getWalletById(walletId)?.name : 'All wallets'
+          wallet: walletId ? getWalletById(walletId)?.name : 'All wallets',
+          copyright: 'FinanceTech 2025, dibuat oleh iuno.in'
         },
         transactions: filteredTransactions
       };
@@ -119,7 +120,7 @@ const ExportDataButton: React.FC<ExportDataButtonProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `transaksi_${format(new Date(), 'yyyyMMdd_HHmmss')}.json`);
+      link.setAttribute('download', `FinanceTech_Transaksi_${format(new Date(), 'yyyyMMdd_HHmmss')}.json`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -156,7 +157,7 @@ const ExportDataButton: React.FC<ExportDataButtonProps> = ({
       
       {showOptions && (
         <div 
-          className={`absolute top-full left-0 mt-2 p-2 rounded-lg z-10 min-w-[200px] ${
+          className={`absolute right-0 top-full mt-2 p-2 rounded-lg z-10 min-w-[200px] ${
             isDark 
               ? 'bg-gray-900 border border-gray-700 shadow-2xl' 
               : 'bg-white border border-gray-200 shadow-lg'

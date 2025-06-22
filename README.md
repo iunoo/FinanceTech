@@ -56,6 +56,12 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Backup Otomatis**: Backup mingguan otomatis dengan retensi 30 hari
 - **Riwayat Backup**: Lihat dan kelola riwayat backup
 
+### 📊 Ekspor Data
+- **Format CSV**: Ekspor transaksi ke format CSV untuk analisis di Excel
+- **Format JSON**: Ekspor data lengkap dalam format JSON
+- **Filter Ekspor**: Pilih rentang tanggal dan dompet untuk ekspor
+- **Metadata**: Informasi lengkap tentang data yang diekspor
+
 ## Teknologi
 
 ### Frontend
@@ -84,6 +90,7 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Efek Glowing yang Ditingkatkan**: Efek visual yang lebih baik untuk status saldo berbeda
 - **Pengingat Hutang Kustom**: Pengaturan pengingat hutang yang dapat disesuaikan
 - **Kategorisasi Pintar**: Saran kategori otomatis berdasarkan deskripsi transaksi
+- **Ekspor Data**: Fitur ekspor data ke format CSV dan JSON
 
 ### 🐛 Perbaikan Bug
 - **Perbaikan Parsing ID Transaksi**: Menangani format ID transaksi dengan benar
@@ -91,6 +98,7 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Perbaikan Tampilan Dompet**: Warna teks saldo sekarang sesuai dengan pengaturan
 - **Perbaikan Pemilihan Dompet**: Menghilangkan highlight biru saat memilih dompet
 - **Optimasi Performa**: Mengurangi animasi yang berat untuk performa lebih baik
+- **Optimasi Mobile**: Perbaikan tampilan dan performa di perangkat mobile
 
 ## Instalasi di VPS
 
@@ -167,7 +175,7 @@ PORT=3001
 
 ```bash
 # Di direktori server
-pm2 start ecosystem.config.js
+pm2 start index.js --name financetech-backend
 pm2 save
 pm2 startup
 ```
@@ -349,6 +357,10 @@ npm run restore <path-to-backup-file>
 ## Lisensi
 
 Proyek ini dilisensikan di bawah [Lisensi MIT](LICENSE).
+
+## Copyright
+
+FinanceTech 2025, dibuat oleh iuno.in
 
 ## Repository
 
