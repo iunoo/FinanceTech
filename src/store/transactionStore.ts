@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useTransactionIdStore, transactionIdHelpers } from './transactionIdStore';
+import { useAuthStore } from './authStore';
 
 export interface Transaction {
   id: string;
@@ -12,6 +13,7 @@ export interface Transaction {
   date: string;
   walletId: string;
   createdAt: string;
+  userId: string; // Add userId to associate transactions with users
   isTransfer?: boolean; // Mark transfer transactions to exclude from analysis
   isDebtTransaction?: boolean; // Mark debt-related transactions
   isBalanceAdjustment?: boolean; // Mark balance adjustment transactions to exclude from analysis
@@ -22,7 +24,7 @@ export interface Transaction {
 
 interface TransactionState {
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'transactionId'>) => string;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'transactionId' | 'userId'>) => string;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (id: string, isInternalCall?: boolean) => void;
   deleteTransactionsByDebtId: (debtId: string) => void;
@@ -49,6 +51,10 @@ export const useTransactionStore = create<TransactionState>()(
       addTransaction: (transaction) => {
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
         
+        // Get current user ID
+        const currentUser = useAuthStore.getState().user;
+        const userId = currentUser?.id || 'unknown';
+        
         // Generate transaction ID based on type
         const prefix = transactionIdHelpers.getPrefix(
           transaction.type,
@@ -64,6 +70,7 @@ export const useTransactionStore = create<TransactionState>()(
           ...transaction,
           id,
           transactionId,
+          userId, // Add userId to transaction
         };
         
         set((state) => ({
@@ -122,7 +129,12 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTransactionsByDateRange: (startDate, endDate) => {
         const { transactions } = get();
+        const currentUser = useAuthStore.getState().user;
+        
         return transactions.filter((t) => {
+          // Filter by user ID
+          if (t.userId !== currentUser?.id) return false;
+          
           const transactionDate = new Date(t.date);
           return transactionDate >= new Date(startDate) && transactionDate <= new Date(endDate);
         });
@@ -130,7 +142,9 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTransactionsByCategory: (walletId, excludeTransfers = true, excludeAdjustments = true) => {
         const { transactions } = get();
-        let filteredTransactions = transactions;
+        const currentUser = useAuthStore.getState().user;
+        
+        let filteredTransactions = transactions.filter(t => t.userId === currentUser?.id);
         
         if (walletId) {
           filteredTransactions = filteredTransactions.filter(t => t.walletId === walletId);
@@ -154,9 +168,13 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTotalIncome: (startDate, endDate, walletId, excludeTransfers = true, excludeAdjustments = true) => {
         const { transactions, getTransactionsByDateRange } = get();
-        let relevantTransactions = startDate && endDate 
-          ? getTransactionsByDateRange(startDate, endDate)
-          : transactions;
+        const currentUser = useAuthStore.getState().user;
+        
+        let relevantTransactions = currentUser ? transactions.filter(t => t.userId === currentUser.id) : [];
+        
+        if (startDate && endDate) {
+          relevantTransactions = getTransactionsByDateRange(startDate, endDate);
+        }
         
         if (walletId) {
           relevantTransactions = relevantTransactions.filter(t => t.walletId === walletId);
@@ -177,9 +195,13 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTotalExpenses: (startDate, endDate, walletId, excludeTransfers = true, excludeAdjustments = true) => {
         const { transactions, getTransactionsByDateRange } = get();
-        let relevantTransactions = startDate && endDate 
-          ? getTransactionsByDateRange(startDate, endDate)
-          : transactions;
+        const currentUser = useAuthStore.getState().user;
+        
+        let relevantTransactions = currentUser ? transactions.filter(t => t.userId === currentUser.id) : [];
+        
+        if (startDate && endDate) {
+          relevantTransactions = getTransactionsByDateRange(startDate, endDate);
+        }
         
         if (walletId) {
           relevantTransactions = relevantTransactions.filter(t => t.walletId === walletId);
@@ -200,12 +222,22 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTransactionsByWallet: (walletId) => {
         const { transactions } = get();
-        return transactions.filter(t => t.walletId === walletId);
+        const currentUser = useAuthStore.getState().user;
+        
+        return transactions.filter(t => 
+          t.walletId === walletId && 
+          t.userId === currentUser?.id
+        );
       },
 
       getDebtTransactions: (debtId) => {
         const { transactions } = get();
-        return transactions.filter(t => t.linkedDebtId === debtId);
+        const currentUser = useAuthStore.getState().user;
+        
+        return transactions.filter(t => 
+          t.linkedDebtId === debtId && 
+          t.userId === currentUser?.id
+        );
       },
       
       getTransactionById: (id) => {
@@ -215,11 +247,23 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTransactionByTransactionId: (transactionId) => {
         const { transactions } = get();
-        return transactions.find(t => t.transactionId === transactionId);
+        const currentUser = useAuthStore.getState().user;
+        
+        return transactions.find(t => 
+          t.transactionId === transactionId && 
+          t.userId === currentUser?.id
+        );
       },
       
       getTransactionStats: () => {
         const { transactions } = get();
+        const currentUser = useAuthStore.getState().user;
+        
+        // Filter transactions by current user
+        const userTransactions = currentUser 
+          ? transactions.filter(t => t.userId === currentUser.id)
+          : [];
+          
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
         const currentYear = now.getFullYear();
@@ -228,7 +272,7 @@ export const useTransactionStore = create<TransactionState>()(
         const byPrefix: Record<string, number> = {};
         const thisMonth: Record<string, number> = {};
         
-        transactions.forEach(transaction => {
+        userTransactions.forEach(transaction => {
           const parsed = transactionIdHelpers.parseTransactionId(transaction.transactionId);
           if (parsed) {
             byPrefix[parsed.prefix] = (byPrefix[parsed.prefix] || 0) + 1;
@@ -240,7 +284,7 @@ export const useTransactionStore = create<TransactionState>()(
         });
         
         return {
-          totalTransactions: transactions.length,
+          totalTransactions: userTransactions.length,
           byPrefix,
           thisMonth
         };

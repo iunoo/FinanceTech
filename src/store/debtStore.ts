@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useAuthStore } from './authStore';
 
 export interface PaymentRecord {
   id: string;
@@ -14,6 +15,7 @@ export interface PaymentRecord {
 
 export interface Debt {
   id: string;
+  userId: string; // Add userId to associate debts with users
   name: string; // Nama orang
   amount: number; // Jumlah awal
   remainingAmount: number; // Sisa yang belum dibayar
@@ -29,7 +31,7 @@ export interface Debt {
 
 interface DebtState {
   debts: Debt[];
-  addDebt: (debt: Omit<Debt, 'id' | 'createdAt' | 'paymentHistory' | 'remainingAmount' | 'isPaid'>) => string;
+  addDebt: (debt: Omit<Debt, 'id' | 'createdAt' | 'paymentHistory' | 'remainingAmount' | 'isPaid' | 'userId'>) => string;
   updateDebt: (id: string, updates: Partial<Debt>) => void;
   deleteDebt: (id: string) => void;
   makePayment: (id: string, amount: number, walletId: string, method: string, notes?: string, transactionId?: string) => { success: boolean; message: string };
@@ -48,10 +50,14 @@ export const useDebtStore = create<DebtState>()(
       debts: [],
       
       addDebt: (debt) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return '';
+        
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
         const newDebt: Debt = {
           ...debt,
           id,
+          userId: currentUser.id,
           createdAt: new Date().toISOString(),
           paymentHistory: [],
           remainingAmount: debt.amount,
@@ -64,16 +70,22 @@ export const useDebtStore = create<DebtState>()(
       },
       
       updateDebt: (id, updates) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return;
+        
         set((state) => ({
           debts: state.debts.map((d) =>
-            d.id === id ? { ...d, ...updates } : d
+            d.id === id && d.userId === currentUser.id ? { ...d, ...updates } : d
           ),
         }));
       },
       
       deleteDebt: (id) => {
         const { debts } = get();
-        const debt = debts.find(d => d.id === id);
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return;
+        
+        const debt = debts.find(d => d.id === id && d.userId === currentUser.id);
         
         if (debt) {
           // Delete all related transactions when debt is deleted
@@ -95,13 +107,18 @@ export const useDebtStore = create<DebtState>()(
         }
         
         set((state) => ({
-          debts: state.debts.filter((d) => d.id !== id),
+          debts: state.debts.filter((d) => !(d.id === id && d.userId === currentUser.id)),
         }));
       },
 
       makePayment: (id, amount, walletId, method, notes, transactionId) => {
         const { debts } = get();
-        const debt = debts.find(d => d.id === id);
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) {
+          return { success: false, message: 'User tidak terautentikasi' };
+        }
+        
+        const debt = debts.find(d => d.id === id && d.userId === currentUser.id);
         
         if (!debt) {
           return { success: false, message: 'Utang/Piutang tidak ditemukan' };
@@ -137,7 +154,7 @@ export const useDebtStore = create<DebtState>()(
 
         set((state) => ({
           debts: state.debts.map((d) => {
-            if (d.id === id) {
+            if (d.id === id && d.userId === currentUser.id) {
               return {
                 ...d,
                 remainingAmount: newRemainingAmount,
@@ -158,7 +175,12 @@ export const useDebtStore = create<DebtState>()(
 
       cancelTransaction: (id) => {
         const { debts } = get();
-        const debt = debts.find(d => d.id === id);
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) {
+          return { success: false, message: 'User tidak terautentikasi' };
+        }
+        
+        const debt = debts.find(d => d.id === id && d.userId === currentUser.id);
         
         if (!debt) {
           return { success: false, message: 'Utang/Piutang tidak ditemukan' };
@@ -200,7 +222,7 @@ export const useDebtStore = create<DebtState>()(
 
         // Hapus debt dari store
         set((state) => ({
-          debts: state.debts.filter((d) => d.id !== id),
+          debts: state.debts.filter((d) => !(d.id === id && d.userId === currentUser.id)),
         }));
 
         return { 
@@ -212,7 +234,12 @@ export const useDebtStore = create<DebtState>()(
 
       deletePaymentRecord: (debtId, paymentId) => {
         const { debts } = get();
-        const debt = debts.find(d => d.id === debtId);
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) {
+          return { success: false, message: 'User tidak terautentikasi' };
+        }
+        
+        const debt = debts.find(d => d.id === debtId && d.userId === currentUser.id);
         
         if (!debt) {
           return { success: false, message: 'Utang/Piutang tidak ditemukan' };
@@ -257,7 +284,7 @@ export const useDebtStore = create<DebtState>()(
 
         set((state) => ({
           debts: state.debts.map((d) => {
-            if (d.id === debtId) {
+            if (d.id === debtId && d.userId === currentUser.id) {
               return {
                 ...d,
                 remainingAmount: newRemainingAmount,
@@ -278,10 +305,15 @@ export const useDebtStore = create<DebtState>()(
       
       getUpcomingDebts: () => {
         const { debts } = get();
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return [];
+        
         const threeDaysFromNow = new Date();
         threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
         
         return debts.filter((debt) => {
+          if (debt.userId !== currentUser.id) return false;
+          
           const dueDate = new Date(debt.dueDate);
           return !debt.isPaid && dueDate <= threeDaysFromNow && dueDate >= new Date();
         });
@@ -289,42 +321,57 @@ export const useDebtStore = create<DebtState>()(
 
       getDebtsByContact: (contactName) => {
         const { debts } = get();
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return [];
+        
         return debts.filter(debt => 
+          debt.userId === currentUser.id &&
           debt.name.toLowerCase().includes(contactName.toLowerCase())
         );
       },
 
       getTotalDebtAmount: () => {
         const { debts } = get();
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return 0;
+        
         return debts
-          .filter(d => d.type === 'debt' && !d.isPaid)
+          .filter(d => d.userId === currentUser.id && d.type === 'debt' && !d.isPaid)
           .reduce((sum, d) => sum + d.remainingAmount, 0);
       },
 
       getTotalCreditAmount: () => {
         const { debts } = get();
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return 0;
+        
         return debts
-          .filter(d => d.type === 'credit' && !d.isPaid)
+          .filter(d => d.userId === currentUser.id && d.type === 'credit' && !d.isPaid)
           .reduce((sum, d) => sum + d.remainingAmount, 0);
       },
 
       getDebtSummaryByName: () => {
         const { debts } = get();
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return {};
+        
         const summary: Record<string, { totalDebt: number; totalCredit: number; count: number }> = {};
         
-        debts.forEach(debt => {
-          if (!summary[debt.name]) {
-            summary[debt.name] = { totalDebt: 0, totalCredit: 0, count: 0 };
-          }
-          
-          if (debt.type === 'debt' && !debt.isPaid) {
-            summary[debt.name].totalDebt += debt.remainingAmount;
-          } else if (debt.type === 'credit' && !debt.isPaid) {
-            summary[debt.name].totalCredit += debt.remainingAmount;
-          }
-          
-          summary[debt.name].count += 1;
-        });
+        debts
+          .filter(debt => debt.userId === currentUser.id)
+          .forEach(debt => {
+            if (!summary[debt.name]) {
+              summary[debt.name] = { totalDebt: 0, totalCredit: 0, count: 0 };
+            }
+            
+            if (debt.type === 'debt' && !debt.isPaid) {
+              summary[debt.name].totalDebt += debt.remainingAmount;
+            } else if (debt.type === 'credit' && !debt.isPaid) {
+              summary[debt.name].totalCredit += debt.remainingAmount;
+            }
+            
+            summary[debt.name].count += 1;
+          });
         
         return summary;
       },

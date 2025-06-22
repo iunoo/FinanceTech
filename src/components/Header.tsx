@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, Sun, Moon, Bell } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useWalletStore } from '../store/walletStore';
@@ -18,8 +18,13 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { getColorForBalance } = useWalletColorStore();
   const { getUnreadCount } = useNotificationStore();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [totalBalance, setTotalBalance] = useState(0);
 
-  const totalBalance = getTotalBalance();
+  // Update total balance when user changes
+  useEffect(() => {
+    setTotalBalance(getTotalBalance());
+  }, [user, getTotalBalance]);
+
   const unreadCount = getUnreadCount();
 
   return (

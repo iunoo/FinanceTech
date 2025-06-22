@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { UserPlus, Mail, Lock, User, Wallet } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useWalletStore } from '../store/walletStore';
 import { useThemeStore } from '../store/themeStore';
 import { toast } from '../store/toastStore';
 
@@ -16,8 +17,10 @@ interface RegisterForm {
 const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { register: registerUser } = useAuthStore();
+  const { initializeDefaultWallets } = useWalletStore();
   const { isDark } = useThemeStore();
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterForm>();
+  const navigate = useNavigate();
 
   const password = watch('password');
 
@@ -26,9 +29,13 @@ const Register: React.FC = () => {
     try {
       const success = await registerUser(data.name, data.email, data.password);
       if (success) {
+        // Initialize default wallets for new user
+        initializeDefaultWallets();
+        
         toast.success('Akun berhasil dibuat!');
+        navigate('/'); // Redirect to dashboard
       } else {
-        toast.error('Pendaftaran gagal');
+        toast.error('Email sudah terdaftar');
       }
     } catch (error) {
       toast.error('Pendaftaran gagal');
