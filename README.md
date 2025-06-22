@@ -78,6 +78,157 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Row Level Security** untuk keamanan data per pengguna
 - **JWT** untuk autentikasi
 
+## Panduan Instalasi Lengkap
+
+### 1. Prasyarat
+
+Sebelum memulai, pastikan Anda telah menginstal:
+
+- **Node.js** versi 18 atau lebih baru
+  - [Download Node.js](https://nodejs.org/en/download/)
+  - Untuk memverifikasi instalasi, buka terminal dan ketik: `node -v` dan `npm -v`
+
+- **Git** (opsional, jika Anda ingin mengkloning repositori)
+  - [Download Git](https://git-scm.com/downloads)
+  - Untuk memverifikasi instalasi: `git --version`
+
+### 2. Setup Supabase
+
+#### 2.1 Buat Akun Supabase
+1. Kunjungi [Supabase](https://supabase.com/) dan klik "Start for Free"
+2. Daftar menggunakan email atau GitHub
+3. Verifikasi email Anda jika diperlukan
+
+#### 2.2 Buat Project Baru
+1. Setelah masuk ke dashboard, klik "New Project"
+2. Pilih organisasi (atau buat yang baru)
+3. Masukkan nama project (misalnya "FinanceTech")
+4. Masukkan password database (simpan dengan aman!)
+5. Pilih region terdekat dengan Anda
+6. Klik "Create new project" dan tunggu hingga project dibuat (sekitar 1-2 menit)
+
+#### 2.3 Setup Database Schema
+1. Di dashboard Supabase, buka tab "SQL Editor"
+2. Klik "New Query"
+3. Salin dan tempel SQL dari file `supabase/migrations/20250622045534_yellow_lagoon.sql`
+4. Klik "Run" untuk membuat tabel dan kebijakan keamanan
+5. Buat query baru, salin dan tempel SQL dari file `supabase/migrations/20250622045556_damp_dawn.sql`
+6. Klik "Run" untuk membuat trigger untuk kategori default
+
+#### 2.4 Dapatkan Kredensial API
+1. Di dashboard Supabase, buka tab "Project Settings" (ikon roda gigi)
+2. Klik "API" di sidebar
+3. Di bagian "Project API keys", salin:
+   - URL: `https://[project-ref].supabase.co`
+   - `anon` public key
+
+### 3. Setup Aplikasi
+
+#### 3.1 Unduh Kode Sumber
+Ada dua cara untuk mendapatkan kode sumber:
+
+**Opsi 1: Menggunakan Git**
+```bash
+git clone https://github.com/iunoo/FinanceTech.git
+cd FinanceTech
+```
+
+**Opsi 2: Unduh ZIP**
+1. Kunjungi [repositori GitHub](https://github.com/iunoo/FinanceTech)
+2. Klik tombol "Code" dan pilih "Download ZIP"
+3. Ekstrak file ZIP ke folder pilihan Anda
+4. Buka terminal dan navigasikan ke folder tersebut:
+```bash
+cd path/to/FinanceTech
+```
+
+#### 3.2 Instal Dependensi
+Di terminal, jalankan:
+```bash
+npm install
+```
+Perintah ini akan menginstal semua paket yang diperlukan. Proses ini mungkin memakan waktu beberapa menit.
+
+#### 3.3 Konfigurasi Environment Variables
+1. Buat file `.env` di root project:
+```bash
+cp .env.example .env
+```
+
+2. Edit file `.env` dan isi dengan kredensial Supabase Anda:
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 4. Menjalankan Aplikasi
+
+#### 4.1 Mode Development
+Untuk menjalankan aplikasi dalam mode pengembangan:
+```bash
+npm run dev
+```
+
+Setelah perintah ini dijalankan:
+1. Terminal akan menampilkan URL lokal (biasanya `http://localhost:5173`)
+2. Buka URL tersebut di browser Anda
+3. Aplikasi akan dimuat dan Anda dapat mendaftar akun baru
+
+#### 4.2 Build untuk Produksi
+Untuk membuat versi produksi:
+```bash
+npm run build
+```
+
+Ini akan menghasilkan folder `dist` yang berisi file statis yang dapat di-deploy ke hosting apa pun.
+
+### 5. Penggunaan Pertama Kali
+
+#### 5.1 Mendaftar Akun
+1. Buka aplikasi di browser
+2. Klik "Daftar sekarang" di halaman login
+3. Isi formulir pendaftaran dengan:
+   - Nama lengkap
+   - Email
+   - Password (minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka)
+4. Klik "Buat Akun"
+
+#### 5.2 Menggunakan Aplikasi
+Setelah mendaftar, Anda akan diarahkan ke dashboard. Berikut beberapa langkah awal:
+
+1. **Sesuaikan Dompet Default**
+   - Buka tab "Pengaturan" > "Dompet"
+   - Edit dompet yang sudah ada atau tambahkan yang baru
+   - Sesuaikan saldo awal untuk mencerminkan keuangan Anda saat ini
+
+2. **Tambahkan Transaksi**
+   - Di dashboard, klik "Tambah Transaksi"
+   - Pilih jenis transaksi (Pemasukan/Pengeluaran)
+   - Isi detail dan klik "Tambah"
+
+3. **Lihat Analisis**
+   - Buka tab "Analisis" untuk melihat grafik dan wawasan keuangan Anda
+
+### 6. Troubleshooting
+
+#### 6.1 Masalah Koneksi Supabase
+Jika Anda mengalami masalah koneksi ke Supabase:
+1. Pastikan URL dan kunci API sudah benar di file `.env`
+2. Periksa apakah project Supabase Anda aktif di dashboard
+3. Pastikan Anda memiliki koneksi internet yang stabil
+
+#### 6.2 Masalah Instalasi Dependensi
+Jika `npm install` gagal:
+1. Hapus folder `node_modules` dan file `package-lock.json`
+2. Jalankan `npm cache clean --force`
+3. Coba lagi dengan `npm install`
+
+#### 6.3 Masalah Saat Menjalankan Aplikasi
+Jika aplikasi tidak berjalan dengan benar:
+1. Pastikan Node.js versi 18 atau lebih baru
+2. Periksa log error di terminal
+3. Pastikan port 5173 tidak digunakan oleh aplikasi lain
+
 ## Konfigurasi Supabase
 
 ### Langkah 1: Buat Akun Supabase
@@ -128,47 +279,39 @@ Untuk menjalankan FinanceTech dengan optimal untuk 1 pengguna, berikut rekomenda
 
 Dengan spesifikasi minimum 1GB RAM, aplikasi FinanceTech dapat berjalan dengan baik untuk 1 pengguna dengan optimasi yang sudah dijelaskan di panduan deployment. Untuk performa yang lebih baik, terutama jika menggunakan fitur AI dan Telegram Bot, disarankan menggunakan VPS dengan 2GB RAM.
 
-## Instalasi dan Pengembangan
+## Deployment ke Hosting Statis
 
-### Prasyarat
-- Node.js 18+ dan npm
-- Akun Supabase
+Jika Anda ingin men-deploy FinanceTech ke hosting statis (seperti Netlify, Vercel, atau GitHub Pages):
 
-### Langkah Instalasi
-1. Clone repositori
-   ```bash
-   git clone https://github.com/iunoo/FinanceTech.git
-   cd FinanceTech
-   ```
+### 1. Build Aplikasi
+```bash
+npm run build
+```
 
-2. Install dependensi
-   ```bash
-   npm install
-   ```
+### 2. Deploy ke Netlify
+1. Buat akun di [Netlify](https://www.netlify.com/)
+2. Drag and drop folder `dist` ke area upload di dashboard Netlify
+3. Atau gunakan Netlify CLI:
+```bash
+npm install -g netlify-cli
+netlify deploy --prod
+```
 
-3. Buat file `.env` berdasarkan `.env.example`
-   ```bash
-   cp .env.example .env
-   ```
+### 3. Deploy ke Vercel
+1. Buat akun di [Vercel](https://vercel.com/)
+2. Install Vercel CLI:
+```bash
+npm install -g vercel
+```
+3. Deploy:
+```bash
+vercel --prod
+```
 
-4. Isi kredensial Supabase di file `.env`
-   ```
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-
-5. Jalankan aplikasi dalam mode pengembangan
-   ```bash
-   npm run dev
-   ```
-
-### Deployment
-1. Build aplikasi
-   ```bash
-   npm run build
-   ```
-
-2. Deploy folder `dist` ke web server atau hosting statis
+### 4. Konfigurasi Environment Variables
+Setelah deploy, jangan lupa untuk mengatur environment variables di dashboard hosting Anda:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 ## Pengembangan Selanjutnya
 
