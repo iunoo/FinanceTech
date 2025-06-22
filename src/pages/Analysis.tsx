@@ -143,10 +143,8 @@ const Analysis: React.FC = () => {
   const generateAIAnalysis = async () => {
     setIsLoadingAnalysis(true);
     
-    // Show loading toast
-    const loadingToast = toast.loading('Menganalisis data keuangan dengan AI...', {
-      duration: 0, // Don't auto dismiss
-    });
+    // Show loading toast - fixed: removed the object parameter
+    const loadingToast = toast.loading('Menganalisis data keuangan dengan AI...');
 
     try {
       const response = await fetch('/api/analysis/generate', {
@@ -162,23 +160,17 @@ const Analysis: React.FC = () => {
 
       if (response.ok) {
         setAiAnalysis(data.analysis);
-        toast.success('Analisis AI berhasil diperbarui!', {
-          id: loadingToast,
-          duration: 4000,
-        });
+        toast.success('Analisis AI berhasil diperbarui!');
+        toast.dismiss(loadingToast);
       } else {
         setAiAnalysis('Gagal menghasilkan analisis. Pastikan API ChatGPT sudah dikonfigurasi di pengaturan.');
-        toast.error(data.message || 'Gagal menghasilkan analisis', {
-          id: loadingToast,
-          duration: 6000,
-        });
+        toast.error(data.message || 'Gagal menghasilkan analisis');
+        toast.dismiss(loadingToast);
       }
     } catch (error) {
       setAiAnalysis('Terjadi kesalahan saat menghasilkan analisis. Silakan coba lagi nanti.');
-      toast.error('Terjadi kesalahan saat menghasilkan analisis', {
-        id: loadingToast,
-        duration: 6000,
-      });
+      toast.error('Terjadi kesalahan saat menghasilkan analisis');
+      toast.dismiss(loadingToast);
     } finally {
       setIsLoadingAnalysis(false);
     }
