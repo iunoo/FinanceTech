@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { passwordUtils, encryptionUtils, sessionUtils } from '../utils/security';
+import { supabase, getCurrentUser, getCurrentSession } from '../lib/supabase';
+import { passwordUtils, sessionUtils } from '../utils/security';
+import { toast } from './toastStore';
 
 interface User {
   id: string;
@@ -9,23 +11,15 @@ interface User {
   telegramId?: string;
 }
 
-interface UserCredential {
-  email: string;
-  password: string; // This will be hashed
-  userId: string;
-}
-
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  users: User[];
-  credentials: UserCredential[];
   lastActivity: number;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (updates: Partial<User>) => void;
-  checkSession: () => boolean;
+  updateUser: (updates: Partial<User>) => Promise<boolean>;
+  checkSession: () => Promise<boolean>;
   updateActivity: () => void;
 }
 
@@ -34,42 +28,46 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      users: [],
-      credentials: [],
       lastActivity: Date.now(),
       
       login: async (email: string, password: string) => {
         try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Authenticate with Supabase
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
           
-          // Find user credentials
-          const { credentials } = get();
-          const userCred = credentials.find(
-            cred => cred.email.toLowerCase() === email.toLowerCase()
-          );
-          
-          if (!userCred) {
+          if (error) {
+            console.error('Login error:', error.message);
             return false;
           }
           
-          // Verify password with bcrypt
-          const isPasswordValid = await passwordUtils.comparePassword(password, userCred.password);
-          
-          if (!isPasswordValid) {
+          if (!data.user) {
             return false;
           }
           
-          // Find user data
-          const { users } = get();
-          const user = users.find(u => u.id === userCred.userId);
-          
-          if (!user) {
-            return false;
+          // Get user profile data
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('Profile fetch error:', profileError.message);
           }
+          
+          // Set user data
+          const userData: User = {
+            id: data.user.id,
+            email: data.user.email || '',
+            name: profileData?.name || data.user.email?.split('@')[0] || 'User',
+            telegramId: profileData?.telegram_id,
+          };
           
           set({ 
-            user, 
+            user: userData, 
             isAuthenticated: true,
             lastActivity: Date.now()
           });
@@ -83,47 +81,53 @@ export const useAuthStore = create<AuthState>()(
       
       register: async (name: string, email: string, password: string) => {
         try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Register with Supabase
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+              },
+            },
+          });
           
-          // Check if user already exists
-          const { credentials } = get();
-          const existingUser = credentials.find(
-            cred => cred.email.toLowerCase() === email.toLowerCase()
-          );
-          
-          if (existingUser) {
+          if (error) {
+            console.error('Registration error:', error.message);
             return false;
           }
           
-          // Create new user ID
-          const userId = Date.now().toString();
+          if (!data.user) {
+            return false;
+          }
           
-          // Hash password
-          const hashedPassword = await passwordUtils.hashPassword(password);
+          // Create profile record
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: data.user.id,
+                name,
+                email: data.user.email,
+              },
+            ]);
+            
+          if (profileError) {
+            console.error('Profile creation error:', profileError.message);
+          }
           
-          // Create user
-          const user: User = {
-            id: userId,
-            email,
+          // Set user data
+          const userData: User = {
+            id: data.user.id,
+            email: data.user.email || '',
             name,
           };
           
-          // Create credentials with hashed password
-          const userCred: UserCredential = {
-            email,
-            password: hashedPassword,
-            userId
-          };
-          
-          // Update state
-          set(state => ({
-            user,
+          set({ 
+            user: userData, 
             isAuthenticated: true,
-            lastActivity: Date.now(),
-            users: [...state.users, user],
-            credentials: [...state.credentials, userCred]
-          }));
+            lastActivity: Date.now()
+          });
           
           return true;
         } catch (error) {
@@ -132,31 +136,104 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       
-      logout: () => {
+      logout: async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+        
         set({ user: null, isAuthenticated: false });
       },
       
-      updateUser: (updates: Partial<User>) => {
-        const { user, users } = get();
-        if (user) {
-          const updatedUser = { ...user, ...updates };
+      updateUser: async (updates: Partial<User>) => {
+        const { user } = get();
+        if (!user) return false;
+        
+        try {
+          // Update auth metadata if name is being updated
+          if (updates.name) {
+            const { error: authError } = await supabase.auth.updateUser({
+              data: { name: updates.name }
+            });
+            
+            if (authError) {
+              console.error('Auth update error:', authError.message);
+              return false;
+            }
+          }
           
-          set({ 
-            user: updatedUser,
-            users: users.map(u => u.id === user.id ? updatedUser : u)
-          });
+          // Update profile record
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              name: updates.name || user.name,
+              telegram_id: updates.telegramId,
+            })
+            .eq('id', user.id);
+            
+          if (profileError) {
+            console.error('Profile update error:', profileError.message);
+            return false;
+          }
+          
+          // Update local state
+          set({ user: { ...user, ...updates } });
+          return true;
+        } catch (error) {
+          console.error('User update error:', error);
+          return false;
         }
       },
       
-      checkSession: () => {
-        const { lastActivity, logout } = get();
-        
-        if (Date.now() - lastActivity > sessionUtils.SESSION_TIMEOUT) {
-          logout();
+      checkSession: async () => {
+        try {
+          // Check if session is expired based on last activity
+          const { lastActivity, logout } = get();
+          
+          if (Date.now() - lastActivity > sessionUtils.SESSION_TIMEOUT) {
+            await logout();
+            return false;
+          }
+          
+          // Check if we have a valid Supabase session
+          const session = await getCurrentSession();
+          
+          if (!session) {
+            set({ user: null, isAuthenticated: false });
+            return false;
+          }
+          
+          // If we have a session but no user data, fetch it
+          if (!get().user) {
+            const user = await getCurrentUser();
+            
+            if (user) {
+              // Get user profile data
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+                
+              set({ 
+                user: {
+                  id: user.id,
+                  email: user.email || '',
+                  name: profileData?.name || user.email?.split('@')[0] || 'User',
+                  telegramId: profileData?.telegram_id,
+                },
+                isAuthenticated: true,
+                lastActivity: Date.now()
+              });
+            }
+          }
+          
+          return true;
+        } catch (error) {
+          console.error('Session check error:', error);
           return false;
         }
-        
-        return true;
       },
       
       updateActivity: () => {

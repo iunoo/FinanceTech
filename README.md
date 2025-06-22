@@ -73,277 +73,36 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Sistem Toast Kustom** untuk notifikasi
 
 ### Backend
-- **Node.js** dengan Express.js
-- **MongoDB** dengan Mongoose ODM
+- **Supabase** untuk autentikasi dan database
+- **PostgreSQL** untuk penyimpanan data
+- **Row Level Security** untuk keamanan data per pengguna
 - **JWT** untuk autentikasi
-- **bcryptjs** untuk hashing password
-- **OpenAI API** untuk integrasi ChatGPT
-- **Telegram Bot API** untuk notifikasi
 
-## Fitur Baru & Perbaikan
+## Konfigurasi Supabase
 
-### ✨ Fitur Terbaru
-- **Backup & Restore Database**: Unduh dan pulihkan data dengan mudah
-- **Optimasi VPS 1GB**: Konfigurasi khusus untuk server dengan memori terbatas
-- **Pemilih Tanggal & Waktu yang Ditingkatkan**: Komponen pemilih tanggal dan waktu yang lebih compact dan profesional
-- **Validasi Tanggal Transaksi**: Mencegah transaksi dengan tanggal di masa depan
-- **Efek Glowing yang Ditingkatkan**: Efek visual yang lebih baik untuk status saldo berbeda
-- **Pengingat Hutang Kustom**: Pengaturan pengingat hutang yang dapat disesuaikan
-- **Kategorisasi Pintar**: Saran kategori otomatis berdasarkan deskripsi transaksi
-- **Ekspor Data**: Fitur ekspor data ke format CSV dan JSON
+### Langkah 1: Buat Akun Supabase
+1. Kunjungi [Supabase](https://supabase.com/) dan buat akun baru
+2. Buat project baru untuk FinanceTech
 
-### 🐛 Perbaikan Bug
-- **Perbaikan Parsing ID Transaksi**: Menangani format ID transaksi dengan benar
-- **Perbaikan Efek Glowing**: Memastikan efek glowing berfungsi untuk semua rentang warna
-- **Perbaikan Tampilan Dompet**: Warna teks saldo sekarang sesuai dengan pengaturan
-- **Perbaikan Pemilihan Dompet**: Menghilangkan highlight biru saat memilih dompet
-- **Optimasi Performa**: Mengurangi animasi yang berat untuk performa lebih baik
-- **Optimasi Mobile**: Perbaikan tampilan dan performa di perangkat mobile
+### Langkah 2: Konfigurasi Autentikasi
+1. Di dashboard Supabase, buka tab **Authentication**
+2. Aktifkan **Email & Password** sign-in method
+3. Opsional: Nonaktifkan konfirmasi email untuk pengembangan
 
-## Instalasi di VPS
+### Langkah 3: Setup Database
+1. Buka tab **SQL Editor** di dashboard Supabase
+2. Jalankan SQL dari file `supabase/migrations/create_tables.sql` untuk membuat tabel
+3. Jalankan SQL dari file `supabase/migrations/seed_default_categories.sql` untuk menambahkan kategori default
 
-### Prasyarat
-- Node.js 18+ dan npm
-- MongoDB (lokal atau cloud)
-- Nginx atau Apache sebagai web server
-- PM2 untuk menjalankan aplikasi sebagai service
+### Langkah 4: Konfigurasi Aplikasi
+1. Di dashboard Supabase, buka tab **Settings** > **API**
+2. Salin **Project URL** dan **anon public** key
+3. Buat file `.env` di root project berdasarkan `.env.example`
+4. Isi nilai `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` dengan nilai yang disalin
 
-### 1. Persiapan Server
-
-```bash
-# Update sistem
-sudo apt update && sudo apt upgrade -y
-
-# Install Node.js dan npm
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Install PM2 secara global
-sudo npm install -g pm2
-
-# Install MongoDB (opsional, jika ingin menggunakan MongoDB lokal)
-sudo apt install -y mongodb
-sudo systemctl enable mongodb
-sudo systemctl start mongodb
-
-# Install Nginx
-sudo apt install -y nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-```
-
-### 2. Clone dan Setup Proyek
-
-```bash
-# Clone repositori
-git clone https://github.com/iunoo/FinanceTech.git
-cd FinanceTech
-
-# Install dependensi frontend
-npm install
-
-# Build frontend
-npm run build
-
-# Pindah ke direktori server dan install dependensi
-cd server
-npm install
-```
-
-### 3. Konfigurasi Environment
-
-Buat file `.env` di direktori `server`:
-
-```
-# Database
-MONGODB_URI=mongodb://localhost:27017/financeapp
-
-# JWT Secret
-JWT_SECRET=your-super-secret-jwt-key-here-change-this-in-production
-
-# OpenAI API Key (opsional)
-OPENAI_API_KEY=your-openai-api-key-here
-
-# Telegram Bot Token (opsional)
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
-
-# Server Port
-PORT=3001
-```
-
-### 4. Setup PM2 untuk Backend
-
-```bash
-# Di direktori server
-pm2 start index.js --name financetech-backend
-pm2 save
-pm2 startup
-```
-
-### 5. Konfigurasi Nginx
-
-Buat file konfigurasi Nginx:
-
-```bash
-sudo nano /etc/nginx/sites-available/financetech
-```
-
-Tambahkan konfigurasi berikut:
-
-```nginx
-server {
-    listen 80;
-    server_name financetech.yourdomain.com; # Ganti dengan domain Anda
-
-    # Frontend (static files)
-    location / {
-        root /path/to/financetech/dist; # Ganti dengan path ke direktori build
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Backend API
-    location /api {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-Aktifkan konfigurasi:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/financetech /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-### 6. Setup SSL dengan Certbot (Opsional tapi Direkomendasikan)
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d financetech.yourdomain.com
-```
-
-### 7. Optimasi untuk VPS 1GB
-
-Untuk server dengan memori terbatas, gunakan konfigurasi berikut:
-
-#### MongoDB Configuration
-
-```yaml
-# /etc/mongod.conf
-storage:
-  dbPath: /var/lib/mongodb
-  journal:
-    enabled: true
-  wiredTiger:
-    engineConfig:
-      cacheSizeGB: 0.25    # Limit cache to 256MB
-
-systemLog:
-  destination: file
-  logAppend: true
-  path: /var/log/mongodb/mongod.log
-
-net:
-  port: 27017
-  bindIp: 127.0.0.1
-
-processManagement:
-  fork: true
-  pidFilePath: /var/run/mongodb/mongod.pid
-
-# Memory optimization
-setParameter:
-  wiredTigerConcurrentReadTransactions: 64
-  wiredTigerConcurrentWriteTransactions: 64
-```
-
-#### PM2 Configuration
-
-```javascript
-// ecosystem.config.js
-module.exports = {
-  apps: [{
-    name: 'financetech-backend',
-    script: 'index.js',
-    instances: 1,           // Single instance for 1GB VPS
-    max_memory_restart: '350MB',
-    node_args: '--max-old-space-size=400',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3001
-    }
-  }]
-};
-```
-
-#### Swap Setup
-
-```bash
-# Create 2GB swap file
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-
-# Optimize swap usage
-echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
-echo "vm.vfs_cache_pressure=50" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-```
-
-### 8. Monitoring dan Maintenance
-
-```bash
-# Melihat log backend
-pm2 logs financetech-backend
-
-# Restart backend jika diperlukan
-pm2 restart financetech-backend
-
-# Update aplikasi
-cd /path/to/financetech
-git pull
-npm install
-npm run build
-cd server
-npm install
-pm2 restart financetech-backend
-
-# Backup database
-cd /path/to/financetech/server
-npm run backup
-
-# Restore database
-npm run restore <path-to-backup-file>
-```
-
-## Backup & Restore Database
-
-### Backup Manual
-1. Buka menu **Pengaturan** > **Backup & Restore**
-2. Klik tombol **Download Backup Database**
-3. File backup (.gz) akan diunduh ke komputer Anda
-4. Simpan file backup di tempat yang aman
-
-### Restore Database
-1. Buka menu **Pengaturan** > **Backup & Restore**
-2. Klik **Pilih File Backup** dan pilih file .gz yang ingin dipulihkan
-3. Klik tombol **Pulihkan Database**
-4. Konfirmasi peringatan untuk melanjutkan
-5. Tunggu hingga proses pemulihan selesai
-
-### Backup Otomatis
-- Backup otomatis dibuat setiap minggu
-- Backup disimpan selama 30 hari
-- Riwayat backup dapat dilihat di menu **Backup & Restore**
+### Langkah 5: Konfigurasi Row Level Security
+1. Pastikan RLS sudah diaktifkan untuk semua tabel (sudah diatur dalam migrasi)
+2. Verifikasi kebijakan akses sudah benar untuk setiap tabel
 
 ## Rekomendasi VPS
 

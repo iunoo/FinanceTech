@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
 import { useTransactionIdStore, transactionIdHelpers } from './transactionIdStore';
 import { useAuthStore } from './authStore';
 
 export interface Transaction {
   id: string;
-  transactionId: string; // New: Human-readable transaction ID
+  transactionId: string;
   type: 'income' | 'expense';
   amount: number;
   category: string;
@@ -13,21 +14,23 @@ export interface Transaction {
   date: string;
   walletId: string;
   createdAt: string;
-  userId: string; // Add userId to associate transactions with users
-  isTransfer?: boolean; // Mark transfer transactions to exclude from analysis
-  isDebtTransaction?: boolean; // Mark debt-related transactions
-  isBalanceAdjustment?: boolean; // Mark balance adjustment transactions to exclude from analysis
-  linkedDebtId?: string; // Link to debt record
-  debtTransactionType?: 'create' | 'payment' | 'cancel'; // Type of debt transaction
-  debtType?: 'debt' | 'credit'; // For debt transactions
+  userId: string;
+  isTransfer?: boolean;
+  isDebtTransaction?: boolean;
+  isBalanceAdjustment?: boolean;
+  linkedDebtId?: string;
+  debtTransactionType?: 'create' | 'payment' | 'cancel';
+  debtType?: 'debt' | 'credit';
 }
 
 interface TransactionState {
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'transactionId' | 'userId'>) => string;
-  updateTransaction: (id: string, updates: Partial<Transaction>) => void;
-  deleteTransaction: (id: string, isInternalCall?: boolean) => void;
-  deleteTransactionsByDebtId: (debtId: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'transactionId' | 'userId'>) => Promise<string>;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<boolean>;
+  deleteTransaction: (id: string, isInternalCall?: boolean) => Promise<boolean>;
+  deleteTransactionsByDebtId: (debtId: string) => Promise<boolean>;
   getTransactionsByDateRange: (startDate: string, endDate: string) => Transaction[];
   getTransactionsByCategory: (walletId?: string, excludeTransfers?: boolean, excludeAdjustments?: boolean) => Record<string, number>;
   getTotalIncome: (startDate?: string, endDate?: string, walletId?: string, excludeTransfers?: boolean, excludeAdjustments?: boolean) => number;
@@ -36,6 +39,7 @@ interface TransactionState {
   getDebtTransactions: (debtId: string) => Transaction[];
   getTransactionById: (id: string) => Transaction | undefined;
   getTransactionByTransactionId: (transactionId: string) => Transaction | undefined;
+  fetchTransactions: () => Promise<void>;
   getTransactionStats: () => {
     totalTransactions: number;
     byPrefix: Record<string, number>;
@@ -47,84 +51,267 @@ export const useTransactionStore = create<TransactionState>()(
   persist(
     (set, get) => ({
       transactions: [],
+      isLoading: false,
+      error: null,
       
-      addTransaction: (transaction) => {
-        const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-        
-        // Get current user ID
+      fetchTransactions: async () => {
         const currentUser = useAuthStore.getState().user;
-        const userId = currentUser?.id || 'unknown';
+        if (!currentUser) return;
         
-        // Generate transaction ID based on type
-        const prefix = transactionIdHelpers.getPrefix(
-          transaction.type,
-          transaction.isTransfer,
-          transaction.isDebtTransaction,
-          transaction.isBalanceAdjustment,
-          transaction.debtType
-        );
+        set({ isLoading: true, error: null });
         
-        const transactionId = useTransactionIdStore.getState().generateTransactionId(prefix);
-        
-        const newTransaction: Transaction = {
-          ...transaction,
-          id,
-          transactionId,
-          userId, // Add userId to transaction
-        };
-        
-        set((state) => ({
-          transactions: [newTransaction, ...state.transactions],
-        }));
-        
-        return id;
-      },
-      
-      updateTransaction: (id, updates) => {
-        set((state) => ({
-          transactions: state.transactions.map((t) =>
-            t.id === id ? { ...t, ...updates } : t
-          ),
-        }));
-      },
-      
-      deleteTransaction: (id, isInternalCall = false) => {
-        const { transactions } = get();
-        const transaction = transactions.find(t => t.id === id);
-        
-        if (!transaction) {
-          return;
+        try {
+          const { data, error } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false });
+            
+          if (error) {
+            throw error;
+          }
+          
+          // Transform data to match our interface
+          const transactions: Transaction[] = data.map(tx => ({
+            id: tx.id,
+            transactionId: tx.transaction_id,
+            userId: tx.user_id,
+            type: tx.type as 'income' | 'expense',
+            amount: tx.amount,
+            category: tx.category,
+            description: tx.description,
+            date: tx.date,
+            walletId: tx.wallet_id,
+            createdAt: tx.created_at,
+            isTransfer: tx.is_transfer,
+            isDebtTransaction: tx.is_debt_transaction,
+            isBalanceAdjustment: tx.is_balance_adjustment,
+            linkedDebtId: tx.linked_debt_id,
+            debtTransactionType: tx.debt_transaction_type as 'create' | 'payment' | 'cancel' | undefined,
+            debtType: tx.debt_type as 'debt' | 'credit' | undefined,
+          }));
+          
+          set({ transactions, isLoading: false });
+        } catch (error: any) {
+          console.error('Error fetching transactions:', error.message);
+          set({ error: error.message, isLoading: false });
         }
+      },
+      
+      addTransaction: async (transaction) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return '';
         
-        // Only handle wallet balance reversion for regular transactions
-        // Debt transactions are handled by the debt store
-        // Balance adjustments should not revert wallet balance
-        if (!transaction.isDebtTransaction && !transaction.isBalanceAdjustment && !isInternalCall) {
-          // Regular transaction - revert wallet balance
-          // Import wallet store dynamically to avoid circular dependency
-          import('./walletStore').then(({ useWalletStore }) => {
-            const walletStore = useWalletStore.getState();
-            const wallet = walletStore.getWalletById(transaction.walletId);
+        set({ isLoading: true, error: null });
+        
+        try {
+          // Generate transaction ID based on type
+          const prefix = transactionIdHelpers.getPrefix(
+            transaction.type,
+            transaction.isTransfer,
+            transaction.isDebtTransaction,
+            transaction.isBalanceAdjustment,
+            transaction.debtType
+          );
+          
+          const transactionId = useTransactionIdStore.getState().generateTransactionId(prefix);
+          
+          // Insert transaction into Supabase
+          const { data, error } = await supabase
+            .from('transactions')
+            .insert([
+              {
+                transaction_id: transactionId,
+                user_id: currentUser.id,
+                type: transaction.type,
+                amount: transaction.amount,
+                category: transaction.category,
+                description: transaction.description,
+                date: transaction.date,
+                wallet_id: transaction.walletId,
+                created_at: transaction.createdAt || new Date().toISOString(),
+                is_transfer: transaction.isTransfer || false,
+                is_debt_transaction: transaction.isDebtTransaction || false,
+                is_balance_adjustment: transaction.isBalanceAdjustment || false,
+                linked_debt_id: transaction.linkedDebtId || null,
+                debt_transaction_type: transaction.debtTransactionType || null,
+                debt_type: transaction.debtType || null,
+              }
+            ])
+            .select()
+            .single();
+            
+          if (error) {
+            throw error;
+          }
+          
+          // Transform to our interface
+          const newTransaction: Transaction = {
+            id: data.id,
+            transactionId: data.transaction_id,
+            userId: data.user_id,
+            type: data.type as 'income' | 'expense',
+            amount: data.amount,
+            category: data.category,
+            description: data.description,
+            date: data.date,
+            walletId: data.wallet_id,
+            createdAt: data.created_at,
+            isTransfer: data.is_transfer,
+            isDebtTransaction: data.is_debt_transaction,
+            isBalanceAdjustment: data.is_balance_adjustment,
+            linkedDebtId: data.linked_debt_id,
+            debtTransactionType: data.debt_transaction_type as 'create' | 'payment' | 'cancel' | undefined,
+            debtType: data.debt_type as 'debt' | 'credit' | undefined,
+          };
+          
+          set(state => ({
+            transactions: [newTransaction, ...state.transactions],
+            isLoading: false
+          }));
+          
+          // Update wallet balance
+          if (!transaction.isDebtTransaction) {
+            const { getWalletById, updateWallet } = await import('./walletStore');
+            const wallet = getWalletById(transaction.walletId);
             
             if (wallet) {
-              const balanceChange = transaction.type === 'income' ? -transaction.amount : transaction.amount;
-              walletStore.updateWallet(transaction.walletId, { 
+              const balanceChange = transaction.type === 'income' ? transaction.amount : -transaction.amount;
+              await updateWallet(transaction.walletId, { 
                 balance: wallet.balance + balanceChange 
               });
             }
-          });
+          }
+          
+          return newTransaction.id;
+        } catch (error: any) {
+          console.error('Error adding transaction:', error.message);
+          set({ error: error.message, isLoading: false });
+          return '';
         }
+      },
+      
+      updateTransaction: async (id, updates) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return false;
         
-        // Remove transaction from store
-        set((state) => ({
-          transactions: state.transactions.filter((t) => t.id !== id),
-        }));
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { error } = await supabase
+            .from('transactions')
+            .update({
+              type: updates.type,
+              amount: updates.amount,
+              category: updates.category,
+              description: updates.description,
+              date: updates.date,
+              wallet_id: updates.walletId,
+              created_at: updates.createdAt,
+              is_transfer: updates.isTransfer,
+              is_debt_transaction: updates.isDebtTransaction,
+              is_balance_adjustment: updates.isBalanceAdjustment,
+              linked_debt_id: updates.linkedDebtId,
+              debt_transaction_type: updates.debtTransactionType,
+              debt_type: updates.debtType,
+            })
+            .eq('id', id)
+            .eq('user_id', currentUser.id);
+            
+          if (error) {
+            throw error;
+          }
+          
+          set(state => ({
+            transactions: state.transactions.map(t => 
+              t.id === id ? { ...t, ...updates } : t
+            ),
+            isLoading: false
+          }));
+          
+          return true;
+        } catch (error: any) {
+          console.error('Error updating transaction:', error.message);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
+      },
+      
+      deleteTransaction: async (id, isInternalCall = false) => {
+        const { transactions } = get();
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return false;
+        
+        const transaction = transactions.find(t => t.id === id && t.userId === currentUser.id);
+        if (!transaction) return false;
+        
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUser.id);
+            
+          if (error) {
+            throw error;
+          }
+          
+          // Only handle wallet balance reversion for regular transactions
+          if (!transaction.isDebtTransaction && !transaction.isBalanceAdjustment && !isInternalCall) {
+            const { getWalletById, updateWallet } = await import('./walletStore');
+            const wallet = getWalletById(transaction.walletId);
+            
+            if (wallet) {
+              const balanceChange = transaction.type === 'income' ? -transaction.amount : transaction.amount;
+              await updateWallet(transaction.walletId, { 
+                balance: wallet.balance + balanceChange 
+              });
+            }
+          }
+          
+          set(state => ({
+            transactions: state.transactions.filter(t => t.id !== id),
+            isLoading: false
+          }));
+          
+          return true;
+        } catch (error: any) {
+          console.error('Error deleting transaction:', error.message);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
       },
 
-      deleteTransactionsByDebtId: (debtId) => {
-        set((state) => ({
-          transactions: state.transactions.filter((t) => t.linkedDebtId !== debtId),
-        }));
+      deleteTransactionsByDebtId: async (debtId) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return false;
+        
+        set({ isLoading: true, error: null });
+        
+        try {
+          const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('linked_debt_id', debtId)
+            .eq('user_id', currentUser.id);
+            
+          if (error) {
+            throw error;
+          }
+          
+          set(state => ({
+            transactions: state.transactions.filter(t => t.linkedDebtId !== debtId),
+            isLoading: false
+          }));
+          
+          return true;
+        } catch (error: any) {
+          console.error('Error deleting transactions by debt ID:', error.message);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
       },
       
       getTransactionsByDateRange: (startDate, endDate) => {
@@ -242,7 +429,12 @@ export const useTransactionStore = create<TransactionState>()(
       
       getTransactionById: (id) => {
         const { transactions } = get();
-        return transactions.find(t => t.id === id);
+        const currentUser = useAuthStore.getState().user;
+        
+        return transactions.find(t => 
+          t.id === id && 
+          t.userId === currentUser?.id
+        );
       },
       
       getTransactionByTransactionId: (transactionId) => {

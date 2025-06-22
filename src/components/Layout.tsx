@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import SessionTimeoutModal from './SessionTimeoutModal';
+import { useAuthStore } from '../store/authStore';
+import { useWalletStore } from '../store/walletStore';
+import { useTransactionStore } from '../store/transactionStore';
+import { useDebtStore } from '../store/debtStore';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { user } = useAuthStore();
+  const { fetchWallets } = useWalletStore();
+  const { fetchTransactions } = useTransactionStore();
+  const { fetchDebts } = useDebtStore();
+
+  // Fetch data when user changes
+  useEffect(() => {
+    if (user) {
+      fetchWallets();
+      fetchTransactions();
+      fetchDebts();
+    }
+  }, [user, fetchWallets, fetchTransactions, fetchDebts]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
