@@ -51,7 +51,7 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Penilaian Risiko**: Indikator visual untuk pembayaran yang terlambat dan mendesak
 
 ### 💾 Backup & Restore Database
-- **Backup Manual**: Unduh backup database lengkap dengan sekali klik
+- **Backup Manual**: Unduh backup data Supabase Anda dengan sekali klik
 - **Restore Database**: Pulihkan data dari file backup yang diunggah
 - **Backup Otomatis**: Backup mingguan otomatis dengan retensi 30 hari
 - **Riwayat Backup**: Lihat dan kelola riwayat backup
@@ -76,7 +76,6 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Supabase** untuk autentikasi dan database
 - **PostgreSQL** untuk penyimpanan data
 - **Row Level Security** untuk keamanan data per pengguna
-- **JWT** untuk autentikasi
 
 ## Panduan Instalasi Lengkap
 
