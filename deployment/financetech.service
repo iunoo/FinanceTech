@@ -1,0 +1,32 @@
+[Unit]
+Description=FinanceTech Personal Finance Application
+After=network.target mongod.service
+Requires=mongod.service
+
+[Service]
+Type=simple
+User=financeapp
+WorkingDirectory=/var/www/financetech/server
+ExecStart=/usr/bin/node --max-old-space-size=400 index.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=financetech
+Environment=NODE_ENV=production
+Environment=PORT=3001
+
+# Resource limits
+LimitNOFILE=4096
+MemoryLimit=450M
+CPUQuota=80%
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/financetech /var/log/financetech
+
+[Install]
+WantedBy=multi-user.target

@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "prod": "NODE_ENV=production node --max-old-space-size=400 index.js",
+    "backup": "node scripts/backup.js",
+    "optimize": "node scripts/optimize-db.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -16,6 +19,11 @@
     "dotenv": "^16.3.1",
     "node-telegram-bot-api": "^0.64.0",
     "openai": "^4.20.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "node-cache": "^5.1.2"
   }
 }
