@@ -50,6 +50,12 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 - **Manajemen Status**: Tandai hutang sebagai lunas dan lacak riwayat pembayaran
 - **Penilaian Risiko**: Indikator visual untuk pembayaran yang terlambat dan mendesak
 
+### 💾 Backup & Restore Database
+- **Backup Manual**: Unduh backup database lengkap dengan sekali klik
+- **Restore Database**: Pulihkan data dari file backup yang diunggah
+- **Backup Otomatis**: Backup mingguan otomatis dengan retensi 30 hari
+- **Riwayat Backup**: Lihat dan kelola riwayat backup
+
 ## Teknologi
 
 ### Frontend
@@ -71,6 +77,8 @@ FinanceTech adalah aplikasi manajemen keuangan pribadi dengan desain glassmorphi
 ## Fitur Baru & Perbaikan
 
 ### ✨ Fitur Terbaru
+- **Backup & Restore Database**: Unduh dan pulihkan data dengan mudah
+- **Optimasi VPS 1GB**: Konfigurasi khusus untuk server dengan memori terbatas
 - **Pemilih Tanggal & Waktu yang Ditingkatkan**: Komponen pemilih tanggal dan waktu yang lebih compact dan profesional
 - **Validasi Tanggal Transaksi**: Mencegah transaksi dengan tanggal di masa depan
 - **Efek Glowing yang Ditingkatkan**: Efek visual yang lebih baik untuk status saldo berbeda
@@ -159,7 +167,7 @@ PORT=3001
 
 ```bash
 # Di direktori server
-pm2 start index.js --name financetech-backend
+pm2 start ecosystem.config.js
 pm2 save
 pm2 startup
 ```
@@ -213,7 +221,77 @@ sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d financetech.yourdomain.com
 ```
 
-### 7. Monitoring dan Maintenance
+### 7. Optimasi untuk VPS 1GB
+
+Untuk server dengan memori terbatas, gunakan konfigurasi berikut:
+
+#### MongoDB Configuration
+
+```yaml
+# /etc/mongod.conf
+storage:
+  dbPath: /var/lib/mongodb
+  journal:
+    enabled: true
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 0.25    # Limit cache to 256MB
+
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+
+net:
+  port: 27017
+  bindIp: 127.0.0.1
+
+processManagement:
+  fork: true
+  pidFilePath: /var/run/mongodb/mongod.pid
+
+# Memory optimization
+setParameter:
+  wiredTigerConcurrentReadTransactions: 64
+  wiredTigerConcurrentWriteTransactions: 64
+```
+
+#### PM2 Configuration
+
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'financetech-backend',
+    script: 'index.js',
+    instances: 1,           // Single instance for 1GB VPS
+    max_memory_restart: '350MB',
+    node_args: '--max-old-space-size=400',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3001
+    }
+  }]
+};
+```
+
+#### Swap Setup
+
+```bash
+# Create 2GB swap file
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Optimize swap usage
+echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+echo "vm.vfs_cache_pressure=50" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+### 8. Monitoring dan Maintenance
 
 ```bash
 # Melihat log backend
@@ -230,7 +308,34 @@ npm run build
 cd server
 npm install
 pm2 restart financetech-backend
+
+# Backup database
+cd /path/to/financetech/server
+npm run backup
+
+# Restore database
+npm run restore <path-to-backup-file>
 ```
+
+## Backup & Restore Database
+
+### Backup Manual
+1. Buka menu **Pengaturan** > **Backup & Restore**
+2. Klik tombol **Download Backup Database**
+3. File backup (.gz) akan diunduh ke komputer Anda
+4. Simpan file backup di tempat yang aman
+
+### Restore Database
+1. Buka menu **Pengaturan** > **Backup & Restore**
+2. Klik **Pilih File Backup** dan pilih file .gz yang ingin dipulihkan
+3. Klik tombol **Pulihkan Database**
+4. Konfirmasi peringatan untuk melanjutkan
+5. Tunggu hingga proses pemulihan selesai
+
+### Backup Otomatis
+- Backup otomatis dibuat setiap minggu
+- Backup disimpan selama 30 hari
+- Riwayat backup dapat dilihat di menu **Backup & Restore**
 
 ## Pengembangan Selanjutnya
 
