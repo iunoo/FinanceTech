@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, Upload, RefreshCw, Database, Clock, Check, AlertTriangle } from 'lucide-react';
 import { useThemeStore } from '../../store/themeStore';
 import { toast } from '../../store/toastStore';
+import { supabase } from '../../lib/supabase';
 
 const DatabaseBackupRestore: React.FC = () => {
   const { isDark } = useThemeStore();
@@ -15,20 +16,20 @@ const DatabaseBackupRestore: React.FC = () => {
   const fetchBackupHistory = async () => {
     setIsLoadingBackups(true);
     try {
-      const response = await fetch('/api/settings/database/backups', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBackups(data.backups);
-      } else {
-        console.error('Failed to fetch backup history');
+      // Ambil riwayat backup dari Supabase
+      const { data, error } = await supabase
+        .from('backup_history')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        throw error;
       }
+      
+      setBackups(data || []);
     } catch (error) {
       console.error('Error fetching backup history:', error);
+      toast.error('Gagal mengambil riwayat backup');
     } finally {
       setIsLoadingBackups(false);
     }
@@ -42,47 +43,34 @@ const DatabaseBackupRestore: React.FC = () => {
     setIsDownloading(true);
     
     // Show loading toast
-    const loadingToastId = toast.loading('Membuat backup database...');
+    const loadingToastId = toast.loading('Membuat backup data Supabase...');
     
     try {
-      const response = await fetch('/api/settings/database/backup', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      // Panggil Supabase Edge Function untuk membuat backup
+      const { data, error } = await supabase.functions.invoke('create-backup', {
+        body: { userId: supabase.auth.getUser() }
       });
       
-      if (!response.ok) {
-        throw new Error('Gagal membuat backup database');
+      if (error) {
+        throw error;
       }
       
-      // Get filename from Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
-      const filename = filenameMatch ? filenameMatch[1] : 'financeapp-backup.gz';
-      
-      // Create blob from response
-      const blob = await response.blob();
+      // Download file
+      const { fileUrl, filename } = data;
       
       // Create download link
-      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
+      a.href = fileUrl;
       a.download = filename;
-      
-      // Trigger download
       document.body.appendChild(a);
       a.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success('Backup database berhasil diunduh!', undefined, 6000);
+      toast.success('Backup data Supabase berhasil diunduh!', undefined, 6000);
       fetchBackupHistory();
     } catch (error) {
       console.error('Error downloading backup:', error);
-      toast.error('Gagal mengunduh backup database', undefined, 6000);
+      toast.error('Gagal mengunduh backup data Supabase', undefined, 6000);
     } finally {
       toast.dismiss(loadingToastId);
       setIsDownloading(false);
@@ -94,8 +82,8 @@ const DatabaseBackupRestore: React.FC = () => {
       const file = e.target.files[0];
       
       // Validate file type
-      if (!file.name.endsWith('.gz')) {
-        toast.error('File harus berformat .gz (MongoDB backup)');
+      if (!file.name.endsWith('.json')) {
+        toast.error('File harus berformat .json (Supabase backup)');
         return;
       }
       
@@ -127,27 +115,25 @@ const DatabaseBackupRestore: React.FC = () => {
     setIsUploading(true);
     
     // Show loading toast
-    const loadingToastId = toast.loading('Memulihkan database dari backup...');
+    const loadingToastId = toast.loading('Memulihkan data dari backup...');
     
     try {
-      const formData = new FormData();
-      formData.append('backupFile', selectedFile);
+      // Baca file sebagai text
+      const fileContent = await selectedFile.text();
       
-      const response = await fetch('/api/settings/database/restore', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
+      // Panggil Supabase Edge Function untuk restore
+      const { data, error } = await supabase.functions.invoke('restore-backup', {
+        body: { 
+          backupData: JSON.parse(fileContent),
+          userId: supabase.auth.getUser()
+        }
       });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Gagal memulihkan database');
+      if (error) {
+        throw error;
       }
       
-      toast.success('Database berhasil dipulihkan dari backup!', undefined, 6000);
+      toast.success('Data berhasil dipulihkan dari backup!', undefined, 6000);
       setSelectedFile(null);
       
       // Reset file input
@@ -182,7 +168,7 @@ const DatabaseBackupRestore: React.FC = () => {
             Backup & Restore Database
           </h2>
           <p className={`text-sm opacity-70 ${isDark ? 'text-white' : 'text-gray-600'}`}>
-            Unduh atau pulihkan data aplikasi Anda
+            Unduh atau pulihkan data aplikasi Anda dari Supabase
           </p>
         </div>
       </div>
@@ -200,7 +186,7 @@ const DatabaseBackupRestore: React.FC = () => {
           </div>
           
           <p className={`mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            Unduh backup database untuk menyimpan data Anda secara lokal. Backup mencakup semua transaksi, dompet, kategori, dan pengaturan.
+            Unduh backup data Supabase untuk menyimpan data Anda secara lokal. Backup mencakup semua transaksi, dompet, kategori, dan pengaturan.
           </p>
           
           <button
@@ -216,7 +202,7 @@ const DatabaseBackupRestore: React.FC = () => {
             ) : (
               <>
                 <Download className="w-5 h-5" />
-                <span>Download Backup Database</span>
+                <span>Download Backup Data Supabase</span>
               </>
             )}
           </button>
@@ -246,12 +232,12 @@ const DatabaseBackupRestore: React.FC = () => {
           
           <div className="mb-4">
             <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-              Pilih File Backup (.gz)
+              Pilih File Backup (.json)
             </label>
             <input
               type="file"
               id="backup-file"
-              accept=".gz"
+              accept=".json"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -334,7 +320,7 @@ const DatabaseBackupRestore: React.FC = () => {
                       {backup.filename}
                     </p>
                     <p className={`text-sm opacity-70 ${isDark ? 'text-white' : 'text-gray-600'}`}>
-                      {new Date(backup.createdAt).toLocaleString('id-ID')} • {backup.size}
+                      {new Date(backup.created_at).toLocaleString('id-ID')} • {backup.size}
                     </p>
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${
@@ -363,11 +349,11 @@ const DatabaseBackupRestore: React.FC = () => {
             <div className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
               <p className="font-medium text-blue-500 mb-2">💡 Informasi Backup Database:</p>
               <ul className="space-y-1 opacity-90">
-                <li>• Backup mencakup semua data keuangan, dompet, kategori, dan pengaturan</li>
+                <li>• Backup mencakup semua data dari Supabase: transaksi, dompet, kategori, dan pengaturan</li>
                 <li>• Backup otomatis dibuat setiap minggu dan disimpan selama 30 hari</li>
                 <li>• Disarankan untuk mengunduh backup manual secara berkala</li>
-                <li>• File backup dikompresi dalam format .gz</li>
-                <li>• Pemulihan database akan mengganti semua data saat ini</li>
+                <li>• File backup disimpan dalam format JSON</li>
+                <li>• Pemulihan database akan mengganti semua data saat ini di Supabase</li>
               </ul>
             </div>
           </div>

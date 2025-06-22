@@ -1,4 +1,5 @@
 import { pdfGenerator } from './pdfGenerator';
+import { supabase } from '../lib/supabase';
 
 interface TelegramReportData {
   userId: string;
@@ -50,26 +51,19 @@ export class TelegramReportService {
   
   private static async generateAIAnalysis(data: TelegramReportData): Promise<string> {
     try {
-      // Use the existing AI analysis service
-      const response = await fetch('/api/analysis/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ 
+      // Gunakan Supabase Edge Function untuk analisis AI
+      const { data: response, error } = await supabase.functions.invoke('generate-analysis', {
+        body: { 
           timeRange: 'month',
           customData: data
-        })
+        }
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        return result.analysis;
-      } else {
-        return this.generateFallbackAnalysis(data);
-      }
+      if (error) throw error;
+      
+      return response.analysis;
     } catch (error) {
+      console.error('Error generating AI analysis:', error);
       return this.generateFallbackAnalysis(data);
     }
   }
@@ -176,44 +170,35 @@ ${data.balance < 0 ? '- 🚨 Kurangi pengeluaran untuk menghindari defisit' : '-
   ): Promise<{ success: boolean; message: string }> {
     
     try {
-      // First send the text message
-      const textResponse = await fetch('/api/telegram/send-message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
+      // Gunakan Supabase Edge Function untuk mengirim pesan Telegram
+      const { data, error } = await supabase.functions.invoke('send-telegram', {
+        body: {
           telegramId,
-          message
-        })
+          message,
+          reportType,
+          hasAttachment: true
+        }
       });
       
-      if (!textResponse.ok) {
-        throw new Error('Failed to send text message');
-      }
+      if (error) throw error;
       
-      // Then send the PDF document
+      // Kirim PDF sebagai dokumen terpisah
       const formData = new FormData();
       formData.append('telegramId', telegramId);
       formData.append('document', pdfBlob, `laporan-keuangan-${reportType}-${new Date().toISOString().split('T')[0]}.pdf`);
-      formData.append('caption', `📄 Laporan Keuangan ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} - ${new Date().toLocaleDateString('id-ID')}`);
       
-      const documentResponse = await fetch('/api/telegram/send-document', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+      const { data: documentData, error: documentError } = await supabase.functions.invoke('send-telegram-document', {
         body: formData
       });
       
-      if (!documentResponse.ok) {
-        throw new Error('Failed to send PDF document');
+      if (documentError) {
+        console.warn('Failed to send PDF document:', documentError);
+        // Tetap lanjutkan meskipun gagal mengirim PDF
       }
       
       return {
         success: true,
-        message: 'Laporan berhasil dikirim ke Telegram dengan PDF'
+        message: 'Laporan berhasil dikirim ke Telegram' + (documentError ? ' (tanpa PDF)' : ' dengan PDF')
       };
       
     } catch (error) {
@@ -246,28 +231,24 @@ ${data.balance < 0 ? '- 🚨 Kurangi pengeluaran untuk menghindari defisit' : '-
           break;
       }
       
-      const response = await fetch('/api/telegram/send-message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
+      // Gunakan Supabase Edge Function untuk mengirim pesan Telegram
+      const { data, error } = await supabase.functions.invoke('send-telegram', {
+        body: {
           telegramId,
-          message
-        })
+          message,
+          reminderType
+        }
       });
       
-      if (response.ok) {
-        return {
-          success: true,
-          message: 'Pengingat utang berhasil dikirim'
-        };
-      } else {
-        throw new Error('Failed to send reminder');
-      }
+      if (error) throw error;
+      
+      return {
+        success: true,
+        message: 'Pengingat utang berhasil dikirim'
+      };
       
     } catch (error) {
+      console.error('Error sending debt reminder:', error);
       return {
         success: false,
         message: 'Gagal mengirim pengingat utang'

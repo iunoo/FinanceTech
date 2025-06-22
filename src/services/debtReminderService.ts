@@ -1,4 +1,5 @@
 import { TelegramReportService } from './telegramReportService';
+import { supabase } from '../lib/supabase';
 
 export interface DebtReminderSettings {
   enabled: boolean;
@@ -38,6 +39,31 @@ export class DebtReminderService {
     // Setup overdue reminder
     if (settings.overdueEnabled) {
       this.setupOverdueReminder(userId, settings);
+    }
+    
+    // Simpan pengaturan ke Supabase
+    this.saveReminderSettings(userId, settings);
+  }
+  
+  private async saveReminderSettings(userId: string, settings: DebtReminderSettings) {
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: userId,
+          notification_settings: {
+            debtReminders: settings
+          },
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+        
+      if (error) {
+        console.error('Error saving reminder settings:', error);
+      }
+    } catch (error) {
+      console.error('Failed to save reminder settings:', error);
     }
   }
   
@@ -149,18 +175,32 @@ export class DebtReminderService {
   }
   
   private async getUserDebtData(userId: string): Promise<{ debts: any[]; telegramId: string | null }> {
-    // This would typically fetch from your database
-    // For now, we'll use the store data
-    const { useDebtStore } = await import('../store/debtStore');
-    const { useAuthStore } = await import('../store/authStore');
-    
-    const debts = useDebtStore.getState().debts;
-    const user = useAuthStore.getState().user;
-    
-    return {
-      debts,
-      telegramId: user?.telegramId || null
-    };
+    try {
+      // Ambil data utang dari Supabase
+      const { data: debtsData, error: debtsError } = await supabase
+        .from('debts')
+        .select('*')
+        .eq('user_id', userId);
+        
+      if (debtsError) throw debtsError;
+      
+      // Ambil data profil pengguna untuk mendapatkan ID Telegram
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('telegram_id')
+        .eq('id', userId)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      return {
+        debts: debtsData || [],
+        telegramId: profileData?.telegram_id || null
+      };
+    } catch (error) {
+      console.error('Error fetching user debt data:', error);
+      return { debts: [], telegramId: null };
+    }
   }
   
   clearUserReminders(userId: string) {
