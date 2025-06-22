@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { LogIn, Mail, Lock, Wallet } from 'lucide-react';
+import { LogIn, Mail, Lock, Wallet, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { toast } from '../store/toastStore';
+import { validationUtils } from '../utils/security';
 
 interface LoginForm {
   email: string;
@@ -13,6 +14,7 @@ interface LoginForm {
 
 const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuthStore();
   const { isDark } = useThemeStore();
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>();
@@ -20,6 +22,13 @@ const Login: React.FC = () => {
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
     try {
+      // Validate email format
+      if (!validationUtils.isValidEmail(data.email)) {
+        toast.error('Format email tidak valid');
+        setIsLoading(false);
+        return;
+      }
+      
       const success = await login(data.email, data.password);
       if (success) {
         toast.success('Selamat datang kembali!');
@@ -27,10 +36,15 @@ const Login: React.FC = () => {
         toast.error('Email atau password salah');
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast.error('Login gagal');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -86,7 +100,7 @@ const Login: React.FC = () => {
                 isDark ? 'text-white opacity-50' : 'text-gray-500'
               }`} />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 {...register('password', { 
                   required: 'Password wajib diisi',
                   minLength: {
@@ -94,11 +108,22 @@ const Login: React.FC = () => {
                     message: 'Password minimal 6 karakter'
                   }
                 })}
-                className={`w-full pl-10 pr-4 py-3 glass-input ${
+                className={`w-full pl-10 pr-12 py-3 glass-input ${
                   isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'
                 }`}
                 placeholder="Masukkan password Anda"
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
+                {showPassword ? (
+                  <EyeOff className={`w-5 h-5 ${isDark ? 'text-white opacity-50' : 'text-gray-500'}`} />
+                ) : (
+                  <Eye className={`w-5 h-5 ${isDark ? 'text-white opacity-50' : 'text-gray-500'}`} />
+                )}
+              </button>
             </div>
             {errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>

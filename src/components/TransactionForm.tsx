@@ -6,6 +6,7 @@ import { useCategoryStore } from '../store/categoryStore';
 import { useAnalyticsStore } from '../store/analyticsStore';
 import { useThemeStore } from '../store/themeStore';
 import { transactionIdHelpers } from '../store/transactionIdStore';
+import { sanitizationUtils } from '../utils/security';
 import WalletSelector from './WalletSelector';
 import CurrencyInput from './CurrencyInput';
 import DateTimePicker from './DateTimePicker';
@@ -66,7 +67,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     } else {
       setSuggestedCategory(null);
     }
-  }, [formData.description, formData.amount, formData.type, formData.category]);
+  }, [formData.description, formData.amount, formData.type, formData.category, getSuggestedCategory]);
 
   // Preview transaction ID
   useEffect(() => {
@@ -150,6 +151,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     // Combine date and time
     const dateTime = new Date(`${formData.date}T${formData.time}`);
 
+    // Sanitize user input
+    const sanitizedDescription = sanitizationUtils.sanitizeString(formData.description);
+
     if (formData.type === 'transfer') {
       const toWallet = wallets.find(w => w.id === formData.toWalletId);
       if (!toWallet) {
@@ -173,7 +177,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         ...formData,
         type: 'expense' as const,
         category: 'Transfer Keluar',
-        description: `Transfer ke ${toWallet.name}${formData.description ? ` - ${formData.description}` : ''}`,
+        description: sanitizationUtils.sanitizeString(`Transfer ke ${toWallet.name}${formData.description ? ` - ${formData.description}` : ''}`),
         date: formData.date,
         createdAt: dateTime.toISOString(),
         isTransfer: true // Mark as transfer to exclude from analysis
@@ -183,7 +187,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         ...formData,
         type: 'income' as const,
         category: 'Transfer Masuk',
-        description: `Transfer dari ${wallet.name}${formData.description ? ` - ${formData.description}` : ''}`,
+        description: sanitizationUtils.sanitizeString(`Transfer dari ${wallet.name}${formData.description ? ` - ${formData.description}` : ''}`),
         walletId: formData.toWalletId!,
         date: formData.date,
         createdAt: dateTime.toISOString(),
@@ -227,6 +231,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         
         updateTransaction(transaction.id, {
           ...formData,
+          description: sanitizedDescription,
           createdAt: dateTime.toISOString()
         });
         toast.success(`✅ Transaksi ${transaction.transactionId} berhasil diperbarui!`);
@@ -237,6 +242,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         
         const newTransactionId = addTransaction({
           ...formData,
+          description: sanitizedDescription,
           createdAt: dateTime.toISOString()
         });
 

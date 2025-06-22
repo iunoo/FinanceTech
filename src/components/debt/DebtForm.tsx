@@ -4,6 +4,7 @@ import { useDebtStore } from '../../store/debtStore';
 import { useTransactionStore } from '../../store/transactionStore';
 import { useWalletStore } from '../../store/walletStore';
 import { useThemeStore } from '../../store/themeStore';
+import { sanitizationUtils } from '../../utils/security';
 import WalletSelector from '../WalletSelector';
 import CurrencyInput from '../CurrencyInput';
 import DateTimePicker from '../DateTimePicker';
@@ -60,11 +61,17 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
       return;
     }
 
+    // Sanitize user input
+    const sanitizedName = sanitizationUtils.sanitizeString(formData.name);
+    const sanitizedDescription = sanitizationUtils.sanitizeString(formData.description);
+
     // Convert date to ISO string with time set to end of day
     const dueDateWithTime = new Date(formData.dueDate + 'T23:59:59').toISOString();
 
     const debtData = {
       ...formData,
+      name: sanitizedName,
+      description: sanitizedDescription,
       dueDate: dueDateWithTime,
       originalWalletId: walletId,
     };
@@ -93,7 +100,7 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
           type: 'income',
           amount: formData.amount,
           category: 'Utang Diterima',
-          description: `Utang dari ${formData.name}${formData.description ? ` - ${formData.description}` : ''}`,
+          description: sanitizationUtils.sanitizeString(`Utang dari ${formData.name}${formData.description ? ` - ${formData.description}` : ''}`),
           date: new Date().toISOString().split('T')[0],
           walletId: walletId,
           createdAt: new Date().toISOString(),
@@ -111,7 +118,7 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
           const store = useTransactionStore.getState();
           const newTransaction = store.getTransactionById(transactionId);
           
-          toast.success(`✅ Utang dari ${formData.name} berhasil ditambahkan!\n\n💰 Saldo ${selectedWallet.name} bertambah Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi ${newTransaction?.transactionId} tercatat di riwayat`);
+          toast.success(`✅ Utang dari ${sanitizedName} berhasil ditambahkan!\n\n💰 Saldo ${selectedWallet.name} bertambah Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi ${newTransaction?.transactionId} tercatat di riwayat`);
         });
       } else {
         // PIUTANG: Saat memberikan piutang, SALDO BERKURANG (REMOVED balance check)
@@ -124,7 +131,7 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
           type: 'expense',
           amount: formData.amount,
           category: 'Piutang Diberikan',
-          description: `Memberikan pinjaman ke ${formData.name}${formData.description ? ` - ${formData.description}` : ''}`,
+          description: sanitizationUtils.sanitizeString(`Memberikan pinjaman ke ${formData.name}${formData.description ? ` - ${formData.description}` : ''}`),
           date: new Date().toISOString().split('T')[0],
           walletId: walletId,
           createdAt: new Date().toISOString(),
@@ -142,7 +149,7 @@ const DebtForm: React.FC<DebtFormProps> = ({ isOpen, onClose, editingDebt }) => 
           const store = useTransactionStore.getState();
           const newTransaction = store.getTransactionById(transactionId);
           
-          toast.success(`✅ Piutang ke ${formData.name} berhasil ditambahkan!\n\n💸 Saldo ${selectedWallet.name} dikurangi Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi ${newTransaction?.transactionId} tercatat di riwayat`);
+          toast.success(`✅ Piutang ke ${sanitizedName} berhasil ditambahkan!\n\n💸 Saldo ${selectedWallet.name} dikurangi Rp ${formData.amount.toLocaleString('id-ID')}\n📝 Transaksi ${newTransaction?.transactionId} tercatat di riwayat`);
         });
       }
     }

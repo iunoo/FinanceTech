@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { passwordUtils, encryptionUtils, sessionUtils } from '../utils/security';
 
 interface User {
   id: string;
@@ -10,7 +11,7 @@ interface User {
 
 interface UserCredential {
   email: string;
-  password: string;
+  password: string; // This will be hashed
   userId: string;
 }
 
@@ -19,10 +20,13 @@ interface AuthState {
   isAuthenticated: boolean;
   users: User[];
   credentials: UserCredential[];
+  lastActivity: number;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
+  checkSession: () => boolean;
+  updateActivity: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -32,6 +36,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       users: [],
       credentials: [],
+      lastActivity: Date.now(),
       
       login: async (email: string, password: string) => {
         try {
@@ -41,10 +46,17 @@ export const useAuthStore = create<AuthState>()(
           // Find user credentials
           const { credentials } = get();
           const userCred = credentials.find(
-            cred => cred.email.toLowerCase() === email.toLowerCase() && cred.password === password
+            cred => cred.email.toLowerCase() === email.toLowerCase()
           );
           
           if (!userCred) {
+            return false;
+          }
+          
+          // Verify password with bcrypt
+          const isPasswordValid = await passwordUtils.comparePassword(password, userCred.password);
+          
+          if (!isPasswordValid) {
             return false;
           }
           
@@ -56,9 +68,15 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
           
-          set({ user, isAuthenticated: true });
+          set({ 
+            user, 
+            isAuthenticated: true,
+            lastActivity: Date.now()
+          });
+          
           return true;
         } catch (error) {
+          console.error('Login error:', error);
           return false;
         }
       },
@@ -81,6 +99,9 @@ export const useAuthStore = create<AuthState>()(
           // Create new user ID
           const userId = Date.now().toString();
           
+          // Hash password
+          const hashedPassword = await passwordUtils.hashPassword(password);
+          
           // Create user
           const user: User = {
             id: userId,
@@ -88,10 +109,10 @@ export const useAuthStore = create<AuthState>()(
             name,
           };
           
-          // Create credentials
+          // Create credentials with hashed password
           const userCred: UserCredential = {
             email,
-            password,
+            password: hashedPassword,
             userId
           };
           
@@ -99,12 +120,14 @@ export const useAuthStore = create<AuthState>()(
           set(state => ({
             user,
             isAuthenticated: true,
+            lastActivity: Date.now(),
             users: [...state.users, user],
             credentials: [...state.credentials, userCred]
           }));
           
           return true;
         } catch (error) {
+          console.error('Registration error:', error);
           return false;
         }
       },
@@ -123,6 +146,22 @@ export const useAuthStore = create<AuthState>()(
             users: users.map(u => u.id === user.id ? updatedUser : u)
           });
         }
+      },
+      
+      checkSession: () => {
+        const { lastActivity, logout } = get();
+        
+        if (Date.now() - lastActivity > sessionUtils.SESSION_TIMEOUT) {
+          logout();
+          return false;
+        }
+        
+        return true;
+      },
+      
+      updateActivity: () => {
+        set({ lastActivity: Date.now() });
+        sessionUtils.updateLastActivity();
       },
     }),
     {

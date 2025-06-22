@@ -14,8 +14,42 @@ import ToastContainer from './components/ToastContainer';
 import './styles/glassmorphism.css';
 
 function App() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, checkSession, updateActivity } = useAuthStore();
   const { isDark } = useThemeStore();
+
+  // Check session on app load
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  // Update activity on user interaction
+  useEffect(() => {
+    const handleActivity = () => {
+      if (isAuthenticated) {
+        updateActivity();
+      }
+    };
+
+    // Add event listeners for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    // Set up interval to check session periodically
+    const interval = setInterval(() => {
+      checkSession();
+    }, 60000); // Check every minute
+
+    return () => {
+      // Clean up event listeners and interval
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, updateActivity, checkSession]);
 
   return (
     <div className={`min-h-screen transition-all duration-500 ${

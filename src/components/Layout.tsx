@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import SessionTimeoutModal from './SessionTimeoutModal';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -29,6 +30,7 @@ const Layout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+      <SessionTimeoutModal warningTime={5 * 60 * 1000} />
     </div>
   );
 };

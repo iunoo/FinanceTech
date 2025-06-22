@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { UserPlus, Mail, Lock, User, Wallet } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Wallet, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useWalletStore } from '../store/walletStore';
 import { useThemeStore } from '../store/themeStore';
 import { toast } from '../store/toastStore';
+import { validationUtils } from '../utils/security';
 
 interface RegisterForm {
   name: string;
@@ -16,6 +17,10 @@ interface RegisterForm {
 
 const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: '' });
+  
   const { register: registerUser } = useAuthStore();
   const { initializeDefaultWallets } = useWalletStore();
   const { isDark } = useThemeStore();
@@ -24,9 +29,32 @@ const Register: React.FC = () => {
 
   const password = watch('password');
 
+  // Check password strength when password changes
+  React.useEffect(() => {
+    if (password) {
+      setPasswordStrength(validationUtils.getPasswordStrength(password));
+    } else {
+      setPasswordStrength({ score: 0, feedback: '' });
+    }
+  }, [password]);
+
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
+      // Validate email format
+      if (!validationUtils.isValidEmail(data.email)) {
+        toast.error('Format email tidak valid');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Validate password strength
+      if (!validationUtils.isStrongPassword(data.password)) {
+        toast.error('Password harus minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka');
+        setIsLoading(false);
+        return;
+      }
+      
       const success = await registerUser(data.name, data.email, data.password);
       if (success) {
         // Initialize default wallets for new user
@@ -38,10 +66,28 @@ const Register: React.FC = () => {
         toast.error('Email sudah terdaftar');
       }
     } catch (error) {
+      console.error('Registration error:', error);
       toast.error('Pendaftaran gagal');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  // Get color for password strength indicator
+  const getStrengthColor = (score: number) => {
+    if (score <= 1) return 'bg-red-500';
+    if (score === 2) return 'bg-orange-500';
+    if (score === 3) return 'bg-yellow-500';
+    if (score === 4) return 'bg-green-500';
+    return 'bg-green-600';
   };
 
   return (
@@ -125,22 +171,58 @@ const Register: React.FC = () => {
                 isDark ? 'text-white opacity-50' : 'text-gray-500'
               }`} />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 {...register('password', { 
                   required: 'Password wajib diisi',
                   minLength: {
-                    value: 6,
-                    message: 'Password minimal 6 karakter'
+                    value: 8,
+                    message: 'Password minimal 8 karakter'
+                  },
+                  validate: {
+                    hasUppercase: (value) => /[A-Z]/.test(value) || 'Password harus mengandung huruf besar',
+                    hasLowercase: (value) => /[a-z]/.test(value) || 'Password harus mengandung huruf kecil',
+                    hasNumber: (value) => /\d/.test(value) || 'Password harus mengandung angka'
                   }
                 })}
-                className={`w-full pl-10 pr-4 py-3 glass-input ${
+                className={`w-full pl-10 pr-12 py-3 glass-input ${
                   isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'
                 }`}
                 placeholder="Masukkan password Anda"
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
+                {showPassword ? (
+                  <EyeOff className={`w-5 h-5 ${isDark ? 'text-white opacity-50' : 'text-gray-500'}`} />
+                ) : (
+                  <Eye className={`w-5 h-5 ${isDark ? 'text-white opacity-50' : 'text-gray-500'}`} />
+                )}
+              </button>
             </div>
             {errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+            )}
+            
+            {/* Password strength indicator */}
+            {password && (
+              <div className="mt-2">
+                <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${getStrengthColor(passwordStrength.score)}`} 
+                    style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                  ></div>
+                </div>
+                <p className={`text-xs mt-1 ${
+                  passwordStrength.score <= 1 ? 'text-red-500' :
+                  passwordStrength.score === 2 ? 'text-orange-500' :
+                  passwordStrength.score === 3 ? 'text-yellow-500' :
+                  'text-green-500'
+                }`}>
+                  {passwordStrength.feedback}
+                </p>
+              </div>
             )}
           </div>
 
@@ -153,16 +235,27 @@ const Register: React.FC = () => {
                 isDark ? 'text-white opacity-50' : 'text-gray-500'
               }`} />
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 {...register('confirmPassword', { 
                   required: 'Konfirmasi password wajib diisi',
                   validate: value => value === password || 'Password tidak cocok'
                 })}
-                className={`w-full pl-10 pr-4 py-3 glass-input ${
+                className={`w-full pl-10 pr-12 py-3 glass-input ${
                   isDark ? 'text-white placeholder-gray-300' : 'text-gray-800 placeholder-gray-500'
                 }`}
                 placeholder="Konfirmasi password Anda"
               />
+              <button
+                type="button"
+                onClick={toggleConfirmPasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className={`w-5 h-5 ${isDark ? 'text-white opacity-50' : 'text-gray-500'}`} />
+                ) : (
+                  <Eye className={`w-5 h-5 ${isDark ? 'text-white opacity-50' : 'text-gray-500'}`} />
+                )}
+              </button>
             </div>
             {errors.confirmPassword && (
               <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
