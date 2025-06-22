@@ -9,6 +9,7 @@ import SecuritySettings from '../components/settings/SecuritySettings';
 import CategorySettings from '../components/settings/CategorySettings';
 import WalletColorSettings from '../components/settings/WalletColorSettings';
 import DatabaseSettings from '../components/settings/DatabaseSettings';
+import DatabaseBackupRestore from '../components/settings/DatabaseBackupRestore';
 import WalletManager from '../components/WalletManager';
 import RecurringTransactionManager from '../components/recurring/RecurringTransactionManager';
 import ExpensePatternAnalysis from '../components/analytics/ExpensePatternAnalysis';
@@ -73,6 +74,7 @@ const Settings: React.FC = () => {
     { id: 'analytics', label: 'Analisis Cerdas' },
     { id: 'reminders', label: 'Pengingat Utang' },
     { id: 'database', label: 'Database & Cache' },
+    { id: 'backup', label: 'Backup & Restore' },
     { id: 'integration', label: 'Integrasi' },
     { id: 'security', label: 'Keamanan' },
   ];
@@ -134,6 +136,7 @@ const Settings: React.FC = () => {
             )}
 
             {activeTab === 'database' && <DatabaseSettings />}
+            {activeTab === 'backup' && <DatabaseBackupRestore />}
             
             {activeTab === 'integration' && (
               <div className="space-y-6">

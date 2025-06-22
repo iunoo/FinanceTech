@@ -7,6 +7,7 @@
     "dev": "node --watch index.js",
     "prod": "NODE_ENV=production node --max-old-space-size=400 index.js",
     "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
     "optimize": "node scripts/optimize-db.js"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "express-rate-limit": "^7.1.5",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "multer": "^1.4.5-lts.1"
   }
 }
