@@ -345,6 +345,30 @@ npm run restore <path-to-backup-file>
 - Backup disimpan selama 30 hari
 - Riwayat backup dapat dilihat di menu **Backup & Restore**
 
+## Rekomendasi VPS
+
+Untuk menjalankan FinanceTech dengan optimal untuk 1 pengguna, berikut rekomendasi spesifikasi VPS:
+
+### Spesifikasi Minimum
+- **RAM**: 1GB
+- **CPU**: 1 vCPU
+- **Storage**: 20GB SSD
+- **Bandwidth**: 1TB/bulan
+
+### Spesifikasi Rekomendasi
+- **RAM**: 2GB
+- **CPU**: 2 vCPU
+- **Storage**: 40GB SSD
+- **Bandwidth**: 2TB/bulan
+
+### Penyedia VPS yang Direkomendasikan
+- DigitalOcean ($5-$10/bulan)
+- Linode ($5-$10/bulan)
+- Vultr ($5-$10/bulan)
+- Contabo ($4-$8/bulan)
+
+Dengan spesifikasi minimum 1GB RAM, aplikasi FinanceTech dapat berjalan dengan baik untuk 1 pengguna dengan optimasi yang sudah dijelaskan di panduan deployment. Untuk performa yang lebih baik, terutama jika menggunakan fitur AI dan Telegram Bot, disarankan menggunakan VPS dengan 2GB RAM.
+
 ## Pengembangan Selanjutnya
 
 - [ ] Aplikasi mobile (React Native)
